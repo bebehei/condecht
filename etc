@@ -1,0 +1,15 @@
+[main]
+path = /home/user/testrepo
+backup = true
+##later
+#backup = /home/user/backup
+
+[host]
+host = bebe-ubu-lap
+dist = ubu
+pkgINS = apt-get install
+pkgREM = apt-get remove
+
+##later
+#repServerUpd
+#repClientUpd

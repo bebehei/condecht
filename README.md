@@ -93,32 +93,92 @@ Variables
 
 There are a few variables, which are important:
 
+### Host config-section
+
 <table>
 <tr>
-	<td>$condechtHOST</td>
+	<td>host</td>
 	<td>This variable defines, which host of your repository you have to use.</td>
 </tr>
 <tr>
-	<td>$condechtDIST</td>
+	<td>distro</td>
 	<td>This variable defines, which distribution condecht has to use to install the right packages. You can say, that every unique host has got every time the same distribution. But the same distribution doesn't say that you have got the same host.</td>
 </tr>
 <tr>
-	<td>$pkgINS</td>
+	<td>pkgINS</td>
 	<td>Defines the command, which get executed to remove a package.</td>
 </tr>
 <tr>
-	<td>$pkgREM</td>
-	<td>Same as $pkgINS, used to remove.</td>
+	<td>pkgREM</td>
+	<td>Same as pkgINS, used to remove.</td>
 </tr>
 <tr>
-	<td>$repServerUPD</td>
+	<td>repServerUpd</td>
 	<td>The command, Update your master repository, to update recent updated files</td>
 </tr>
 <tr>
-	<td>$repClientUPD</td>
+	<td>repClientUpd</td>
 	<td>The command, to get the latest version of your master repo.</td>
 </tr>
 </table>
+
+### General config-section
+<table>
+<tr>
+	<td></td>
+	<td></td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
+</tr>
+</table>
+
+
+### pkg:$package:$hostname config-section
+<table>
+<tr>
+	<td>pkg</td>
+	<td>Just a little redundancy to verify the data in the section. It is not necessary yet but maybe later.</td>
+</tr>
+<tr>
+	<td>syspkg</td>
+	<td>There are the packages of the system stored, which are going to get installed. A record contains the following data: the distro, followed by a pair of braces, where the packages are </td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
+</tr>
+</table>
+
 
 Brainstorm
 ----------
