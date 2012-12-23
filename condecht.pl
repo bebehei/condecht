@@ -6,7 +6,6 @@ use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use Config::IniFiles;
-use Switch;
 use File::Copy;
 ##END LOAD MODULES
 
@@ -22,8 +21,7 @@ my $config_main = "/etc/condecht";
 my $config_pkg = "packages.conf";
 ##END DEFAULT VARIABLES
 
-#die if a call on the $cfg obj fails.
-#This function will format the errors-array in right way
+##USED FUNCTIONS
 sub stirb {
 	for(@Config::IniFiles::errors){
 		chomp();
@@ -32,58 +30,22 @@ sub stirb {
 	die;
 }
 
+##HOOK-Functions
+sub hook {
+	print "$_";
+}
+##END USED FUNCTIONS
 
 ##FUNCTIONS for REMOVING/INSTALLING PACKAGES ##
 sub pkginstall {
-	system $host->("host", "pkgINS") . " " . @syspkgs;
 
-	if($? == 0){
-		configinstall();
-	}
-	else {
-		print "The packagemanager returned an error code. Continue installing packages? [y/N]";
-		if(<STDIN> =~ /y/i){
-			configinstall();
-		}
-		else {
-			die "Stopped while installing the packages. You may have to fix some errors.";
-		}
-	}
-}
-
-sub pkgremove {
-	configremove();
-	system $host->("hostdef", "pkgREM") . " " . @syspkgs;
-	if($? == 0){
-		##do nothing
-		return 0;
-	}
-	else {
-		die "The Package-Manager returned an error-code!";
-	}
-}
-
-sub configinstall {
-	for $file (@cfgfiles){
-		my ($ffile,$fdest,$fmode,$fowner,$fgroup) = split(",", $file);
-		my (,,$fuid,$fgid) = getpwnam($fowner) or die "$fowner not in passwd file";
-		system "rm -v $fdest";
-		system "cp -v $ffile $fdest";
-		chmod oct($fmode), $fdest;
-		chown $fuid, $fguid, $fdest;
-	}
 }
 
 sub configremove {
 #todo backup
-	print "Should there be a backup of the config-files? [y/N]";
-	if(<STDIN> =~ /y/i){
-		$backup = "true";
-	}
-
 	for $file (@cfgfiles){
 		($ffile,$fdest,$fmode,$fowner,$fgroup) = split(",", $file);
-		if($backup){
+		if($main{backup}){
 			move($fdest, $main{"path"} . "/backup/" . $fdest) or die "Backup failed: $!";
 		}
 		else {
@@ -181,77 +143,94 @@ if($check_config){
 ##todo
 #hier schauen, ob die if-abfrage unnötig ist und @config::inifiles::errors das auch ausgibt!
 for $package (@packages){
-	if($pkg->val("$main{host} $package", "pkg") or stirb){
-		pre_hook();
+	if($package == $pkg->val("$main{host} $package", "pkg") or stirb){
+		hook("pre");
 		if($mode == "pi"){
-			pre_install_hook();
-		
-			post_pkg_install_hook();
-		}
-		elsif($mode == "pr"){
-			pre_pkg_remove_hook();
+			hook("pre_pkg_install");
 
-			post_pkg_remove_hook();
-		}
-		elsif($mode == "ci"){
-			pre_config_install_hook();
+			for $dist ($pkg->val("$main{host} $package", "dist") or stirb){
+				if($dist =~ /^$main{dist}\s*:(.*)/){
+					@syspkgs = split(" ", $1);
+				}
+			}
 
-			post_config_install_hook();
-		}
-		elsif($mode == "cr"){
-			pre_confif_remove_hook();
+			system $main{pkgINS} . " " . @syspkgs;
 
-			post_config_remove_hook();
+			if($? != 0){
+				print "The packagemanager returned an error code. Continue installing packages? [y/N]";
+				if(<STDIN> =~ /y/i){
+					#do nothing -> config install will be executed
+				}
+				else {
+					die "Stopped while installing the packages. You may have to fix some errors.";
+				}
+			}
+
+			hook("post_pkg_install");
 		}
+
+		if($mode == "cr" || $mode == "pr"){
+			hook("pre_confif_remove");
+
+			for $file ($pkg->val("$main{host} $package", "file") or stirb){
+				($ffile,$fdest,$fmode,$fowner,$fgroup) = split(",", $file);
+				if($main{backup}){
+					system "mv -v $fdest, $main{path}/backup/$fdest" or die "Backup failed: $!";
+				}
+				else {
+					system "rm -v $fdest";
+				}
+			}
+
+			hook("post_config_remove");
+		}
+
+		if($mode == "pr"){
+			hook("pre_pkg_remove");
+
+			for $dist ($pkg->val("$main{host} $package", "dist") or stirb){
+				if($dist =~ /^$main{dist}\s*:(.*)/){
+					@syspkgs = split(" ", $1);
+				}
+			}
+
+			system $main{pkgREM} . " " . @syspkgs;
+
+			if($? != 0){
+				print "The packagemanager returned an error code. Continue removing packages? [y/N]";
+				if(<STDIN> =~ /y/i){
+					#do nothing -> config install will be executed
+				}
+				else {
+					die "Stopped while removing the packages. You may have to fix some errors.";
+				}
+			}
+
+			hook("post_pkg_remove");
+		}
+
+		if($mode == "ci" || $mode == "pi"){
+			hook("pre_config_install");
+			
+			for $file ($pkg->val("$main{host} $package", "file") or stirb){
+				my ($ffile,$fdest,$fmode,$fowner,$fgroup) = split(",", $file);
+				my ($fuid,$fuid,$fuid) = getpwnam($fowner) or die "$fowner not in passwd file";
+				my ($fgid,$fgid,$fgid) = getgrnam($fgroup) or die "$fgroup not passwd file";
+				system "rm -v $fdest";
+				system "cp -v $ffile $fdest";
+				chmod oct($fmode), $fdest;
+				chown $fuid, $fguid, $fdest;
+			}
+
+			hook("post_config_install");
+		}
+
 		else {
 			die "There's a heavy failure in the software: \$mode == $mode.";
 		}
-		post_hook();
+		hook("post");
 	}
 }
-
-if($pkg->Group($main{"host"})){
-	for $package (@pkgs){
-	##todo
-	##verbessern group element
-	#$pkg->SectionExists("pkg:" . $pkg . ":" . $host{"host"})){
-		for $_ ($pkg->val()){
-			if(/$main{"dist"}/){
-				if(/:(.*)$/){
-					#$packages = "true";
-					push @syspkgs, split(" ", $1);
-				}
-				else {
-					die "There is no colon, separating the distro and the packages!\nPackage: $pkg!\n";
-				}
-			}
-		}
-
-		##todo
-		##verbessern group-> element
-		for $_ ($pkg->val("pkg:" . $pkg . ":" . $host{"host"}, "file") or stirb){
-			($file) = split(",", $_);
-			$_ =~ s/$file/\.\/$host{"host"}\.d\/$soft\.d\/$file/;
-			push @cfgfiles, $_;
-		}
-	}
-		#else {
-		#	warn "Config-Section $pkg not found";
-		#}
-}
-else {
-	die "There is no group $main{host} definded in $main{config_pkg}!";
-}
-
-## REMOVE/DEPLOY PACKAGES ##
-switch ($mode){
-	case "pi" { pkginstall();    }
-	case "pr" { pkgremove();     }
-	case "ci" { configinstall(); }
-	case "cr" { configremove();  }
-	else { die "mhmmm, something is coded wrong! It is not your mistake!"; }
-}
-##END REMOVE/DEPLOY PACKAGES ##
 
 __END__
 =head1 NAME
