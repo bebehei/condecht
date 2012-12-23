@@ -1,100 +1,65 @@
 condecht
 ========
-
-**Condecht isn't even programmed. I just got the idea some days ago, so I'm just planning, how to run it!**
-
 condecht is a software to deploy and remove configfiles and their depending packages.
 You can use it with git or any other versioning system to deploy your config in every system you are administrating.
 With a versioning system you get a synchronized config-file base, what you can use on every system.
 
 Main Files
 ----------
-
 There are 3 Main Files:
-* The condecht.sh Executable
-* The condecht.conf Configuration-File for condecht
-* The hostdef.sh Executable for HostDetection
+* The condecht.pl Executable or the condecht command
+* The /etc/condecht Configuration-File for condecht
+* The $PATH/packages.conf package-conf-file
 
 structure
 ---------
-
 **ROOT**
 * the executable:
-  * condecht.sh
-  * condecht (link)
+  * condecht (link to condecht.pl)
 * the condecht-config
-  * condecht.conf
-
   * $condechtHOST/
    * $package.d/
     * config-files for $package
-    * hooks.sh
-      * The following functions have to be defined in the hooks.sh
-      * pre/post
-      * pkg/config: executed when config or pkg installed/removed
-      * install/remove: after installation or remove
-      * you can combine these 6 definitions together
-      * example: function post-pkg-install {....
 
 ### The Tree
 ~ = CondechtRoot
 
-* ~/condecht.sh
-* ~/condecht
-* ~/condecht.conf
-* ~/hostdef.sh
-* ~/$condechtHOST/
-* ~/$condechtHOST/$package.d/
-* ~/$condechtHOST/$package.d/
+* ~/condecht.pl
+* ~/condecht (link to condecht.pl)
+* /etc/condecht
+* ~/packages.conf
+* ~/host-$HOST.d/
+* ~/host-$HOST.d/$package.d/
+* ~/host-$HOST.d/$package.d/
 
 execution
 ---------
-
 condecht COMMAND [OPTIONs] $package
 COMMANDs:
 You have to combine at least two of those four options together
-* -p 	| Install/Remove package & config
-* -c	| only deploy/remove config
-* -i	| install package/config
-* -r	| remove package/config
+* -pi @packages	| Install @packages & config
+* -pr	@packages	| Remove @packages & config
+* -ci	@packages	| install config of	@packages
+* -cr	@packages	| remove config of @packages
 
 * -u	| update repository
 * -U	| Update Configfiles
 
 OPTIONs:
-  * -b --backup			| save the config-file of the destination (overwrites values, specified in the condecht-config)
-  * -B --no-backup		| don't backup the config file of the destination (overwrites values, specified in the condecht-config)
+  * -b --backup					| save the config-file of the destination (overwrites values, specified in the condecht-config)
   * -a --config $file		| take $file as alternative config-file for condecht
-  * -C --check			| check the config-file of condecht for errors (missing files, etc)
-  * -h --help			| print help and exit
+  *    --check					| check the config-file of condecht for errors (missing files, etc)
+  * -h --help						| print help and exit
 
 ConfigFile condecht.conf
 ----------------------------
-
-View the example-config.conf file in the root of the git repo for information.
-
-HostDetectionScript hostdef.sh 
-------------------------------
-
-This script is used to detect on which host you are right now. You have to program it yourself. condecht is aiming to have one repository with configurations on many hosts. This script will get sourced by condecht and you have to get 
-
-It should define at least 6 variables:
-
-* $condechtHOST
-* $condechtDIST
-* $pkgINS
-* $pkgREM
-* $repServerUPD
-* $repClientUPD
-
+View the config-example.conf file in the root of the git repo for information.
 
 Variables
 ---------
-
 There are a few variables, which are important:
 
 ### Host config-section
-
 <table>
 <tr>
 	<td>host</td>
@@ -182,9 +147,12 @@ There are a few variables, which are important:
 
 Brainstorm
 ----------
-* Backup des orginalen config-files
-* Wenn hostname nicht eindeutig, aus $datei auslesen
-* Conf-dir Prefix
+* Backup des orginalen config-files -> /etc/condecht->main->backup
+* Wenn hostname nicht eindeutig, aus $datei auslesen -> /etc/condecht
+* Conf-dir Prefix -> path
+
+TODO
+----
 
 Examples
 --------
