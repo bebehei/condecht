@@ -159,7 +159,7 @@ There are a few variables, which are important:
 </tr>
 <tr>
 	<td>syspkg</td>
-	<td>There are the packages of the system stored, which are going to get installed. A record contains the following data: the distro, followed by a pair of braces, where the packages are </td>
+	<td>There are the packages of the system stored, which are going to get installed. A record contains the following data: the distro, followed by a colon, behind it listed the packages.</td>
 </tr>
 <tr>
 	<td></td>

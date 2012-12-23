@@ -3,22 +3,18 @@
 ##LOAD MODULES
 use warnings;
 #use strict;
-
 use Getopt::Long;
 use Pod::Usage;
 use Config::IniFiles;
 use Switch;
+use File::Copy;
 ##END LOAD MODULES
 
 ##DECLARE EMPTY VARIABLES
 my $mode;    #decide, whether install/remove config/package
 my @syspkgs; #packages for the system packagemanager
 my @pkgs;    #packages of condecht to install
-my %host;    #the information of the host-section in $config_main
 my %main;    #the information of the main-section in $config_main
-##todo
-#will we use %pkg?
-my %pkg;     #the information of the actual group of the host
 ##DECLARE EMPTY VARIABLES
 
 ## DEFAULT VARIABLES
@@ -57,20 +53,13 @@ sub pkginstall {
 
 sub pkgremove {
 	configremove();
-	
 	system $host->("hostdef", "pkgREM") . " " . @syspkgs;
-
 	if($? == 0){
-		configremove();
+		##do nothing
+		return 0;
 	}
 	else {
-		print "The packagemanager returned an error code. Continue removing packages? [y/N]";
-		if(<STDIN> =~ /y/i){
-			configremove();
-		}
-		else {
-			die "Stopped while removing the packages. You may have to fix some errors.";
-		}
+		die "The Package-Manager returned an error-code!";
 	}
 }
 
@@ -87,68 +76,100 @@ sub configinstall {
 
 sub configremove {
 #todo backup
-		print "Should there be a backup of the config-files? [y/N]";
-		if(<STDIN> =~ /y/i){
-			for
-		for $file (@cfgfiles){
-			($ffile,$fdest,$fmode,$fowner,$fgroup) = split(",", $file);
-			system "rm -v $destination";
+	print "Should there be a backup of the config-files? [y/N]";
+	if(<STDIN> =~ /y/i){
+		$backup = "true";
+	}
+
+	for $file (@cfgfiles){
+		($ffile,$fdest,$fmode,$fowner,$fgroup) = split(",", $file);
+		if($backup){
+			move($fdest, $main{"path"} . "/backup/" . $fdest) or die "Backup failed: $!";
 		}
+		else {
+			system "rm -v $fdest";
+		}
+	}
 }
 ##END FUNCTIONS for REMOVING/INSTALLING PACKAGES ##
 
-#read parameters
+##READ COMMAND LINE PARAMETERS ##
 GetOptions(
-	"b|backup!" => \$backup,
-	"B" => sub { $backup = "false" }, "c=s" => \$config,
-	"config=s" => \$config,
-	"C" => \$check_config,
+	"backup!" => \$backup,
+	"c|config=s" => \$config,
+	"check" => \$check_config,
+
+	##deciding mode
 	"pi=s@" => sub { if(!$mode){ $mode = "pi"; @pkgs = @_; } else { exit(1); }} ,
 	"pr=s@" => sub { if(!$mode){ $mode = "pr"; @pkgs = @_; } else { exit(1); }} ,
 	"ci=s@" => sub { if(!$mode){ $mode = "ci"; @pkgs = @_; } else { exit(1); }} ,
 	"cr=s@" => sub { if(!$mode){ $mode = "cr"; @pkgs = @_; } else { exit(1); }} ,
-	"Sc" => sub { $sync = "client" },
-	"Ss" => sub { $sync = "server" },
+
+	##later
+	##updating the repo or the client
+	#"Sc" => sub { $sync = "client" },
+	#"Ss" => sub { $sync = "server" },
+
 	"help|h" => sub { pod2usage(2) },
 
-	#list hosts
-	"lh" => sub { if(!$list){ my $list = "hosts"; if($_ != ""){	$mode = $_; } } },
-	"lp" => sub { if(!$list){ my $list = "pkg"; if($_ != ""){	$mode = $_; } } },
+	##later
+	##list hosts
+	#"lh" => sub { if(!$list){ my $list = "hosts"; if($_ != ""){	$mode = $_; } } },
+	#"lp" => sub { if(!$list){ my $list = "pkg"; if($_ != ""){	$mode = $_; } } },
 );
 
+##CHECK PARAMETERS
 
+##END CHECK PARAMETERS
 
-#read main config
-my $host = Config::IniFiles->new(-file => $config_main) or stirb;
+##READ MAIN CONFIG ##
+my $cfg = Config::IniFiles->new(-file => $config_main) or stirb;
+
 #check variables of hostfile
-if($host->SectionExists("host")){
-	for(("host", "dist", "pkgINS", "pkgREM", "repServerUpd", "repClientUpd")){
-		if($host->val("host", $_)){
-			$host{$_} = $host->val("host", $_);
+#a check of the variables is necessary here
+if($cfg->SectionExists("main")){
+	for(("path", "backup", "host", "dist", "pkgINS", "pkgREM", "repServerUpd", "repClientUpd")){
+		if($cfg->val("host", $_)){
+			if($_ == "path"){
+				$main{"config_pkg"} = $cfg->val("main", $_) . $config_main;
+			}
+			else {
+				$main{$_} = $cfg->val("main", $_);
+			}
+		}
+		##later remove this else if
+		elsif($_ == "repServerUpd" || $_ == "repClientUpd"){
+			##these options are not necessary yet
+			$main{$_} = "";
 		}
 		else {
-			die "Couldn't find definition of $_ in $config_host";
+			die "Couldn't find definition of $_ in $config_main";
 		}
 	}
 }
 else {
-	die "No Section host defined in config-file $config_host";
+	die "No Section host defined in config-file $config_main";
 }
-undef $host;
+undef $cfg;
+##END READ MAIN CONFIG
 
-#read condecht-config
-my $pkg = Config::IniFiles->new(-file => $cfg->val("main", "path")) or stirb;
+##INIT PACKAGES-CONFIG
+my $pkg = Config::IniFiles->new(-file => $main{"path"} . $config_pkg) or stirb;
+##END INIT PACKAGES CONFIG
 
 ##DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
 ##list packages and hosts
 if($list){
 	if($list == "hosts"){
-		for($pkg
+		#for($pkg){}
+	}
+	if($list == "pkg"){
+		#for(){}
+	}
 	exit(0);
 }
 
 #Check config, if true -> checkconfig && exit
-#mhmmm, really?
 if($check_config){
 	if(checkconfig()){
 		exit(0);
@@ -159,23 +180,68 @@ if($check_config){
 #PAKETE AUSLESEN, WELCHE GEBRAUCHT WERDEN
 ##todo
 #hier schauen, ob die if-abfrage unnötig ist und @config::inifiles::errors das auch ausgibt!
-for $pkg (@pkgs){
-	if($cfg->SectionExists("pkg:" . $pkg . ":" . $host{"host"})){
+for $package (@packages){
+	if($pkg->val("$main{host} $package", "pkg") or stirb){
+		pre_hook();
+		if($mode == "pi"){
+			pre_install_hook();
 		
-		push @syspkgs, $cfg->val("pkg:" . $pkg . ":" . $host{"host"}, "dist")  or stirb;
-
-		for $_ ($cfg->val("pkg:" . $pkg . ":" . $host{"host"}, "file") or stirb){
-			($file) = split(",", $_);
-			$_ =~ s/$file/\.\/$host{"host"}\.d\/$soft\.d\/$file/;
-			push @cfgfiles, "./host-" . $host{"host"} . ".d/$pkg.d/$file";
+			post_pkg_install_hook();
 		}
-	}
-	else {
-		warn "Where is the dist-parameter in the Section pkg:" . $pkg . ":" . $host{"host"} . "?";
+		elsif($mode == "pr"){
+			pre_pkg_remove_hook();
+
+			post_pkg_remove_hook();
+		}
+		elsif($mode == "ci"){
+			pre_config_install_hook();
+
+			post_config_install_hook();
+		}
+		elsif($mode == "cr"){
+			pre_confif_remove_hook();
+
+			post_config_remove_hook();
+		}
+		else {
+			die "There's a heavy failure in the software: \$mode == $mode.";
+		}
+		post_hook();
 	}
 }
-##todo
-#modify syspkgs-array, filter packages only from current distro
+
+if($pkg->Group($main{"host"})){
+	for $package (@pkgs){
+	##todo
+	##verbessern group element
+	#$pkg->SectionExists("pkg:" . $pkg . ":" . $host{"host"})){
+		for $_ ($pkg->val()){
+			if(/$main{"dist"}/){
+				if(/:(.*)$/){
+					#$packages = "true";
+					push @syspkgs, split(" ", $1);
+				}
+				else {
+					die "There is no colon, separating the distro and the packages!\nPackage: $pkg!\n";
+				}
+			}
+		}
+
+		##todo
+		##verbessern group-> element
+		for $_ ($pkg->val("pkg:" . $pkg . ":" . $host{"host"}, "file") or stirb){
+			($file) = split(",", $_);
+			$_ =~ s/$file/\.\/$host{"host"}\.d\/$soft\.d\/$file/;
+			push @cfgfiles, $_;
+		}
+	}
+		#else {
+		#	warn "Config-Section $pkg not found";
+		#}
+}
+else {
+	die "There is no group $main{host} definded in $main{config_pkg}!";
+}
 
 ## REMOVE/DEPLOY PACKAGES ##
 switch ($mode){
