@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 ##LOAD MODULES
-use warnings;
+#use warnings;
 #use strict;
 use Getopt::Long;
 use Pod::Usage;
@@ -21,44 +21,15 @@ my $config_main = "/etc/condecht";
 my $config_pkg = "packages.conf";
 ##END DEFAULT VARIABLES
 
-##USED FUNCTIONS
-sub stirb {
-	for(@Config::IniFiles::errors){
-		chomp();
-		warn $_ ."\n";
-	}
-	die;
-}
-
 ##HOOK-Functions
 sub hook {
 	print "$_";
 }
 ##END USED FUNCTIONS
 
-##FUNCTIONS for REMOVING/INSTALLING PACKAGES ##
-sub pkginstall {
-
-}
-
-sub configremove {
-#todo backup
-	for $file (@cfgfiles){
-		($ffile,$fdest,$fmode,$fowner,$fgroup) = split(",", $file);
-		if($main{backup}){
-			move($fdest, $main{"path"} . "/backup/" . $fdest) or die "Backup failed: $!";
-		}
-		else {
-			system "rm -v $fdest";
-		}
-	}
-}
-##END FUNCTIONS for REMOVING/INSTALLING PACKAGES ##
-
 ##READ COMMAND LINE PARAMETERS ##
 GetOptions(
-	"backup!" => \$backup,
-	"c|config=s" => \$config,
+	"c|config=s" => \$config_main,
 	"check" => \$check_config,
 
 	##deciding mode
@@ -85,19 +56,21 @@ GetOptions(
 ##END CHECK PARAMETERS
 
 ##READ MAIN CONFIG ##
-my $cfg = Config::IniFiles->new(-file => $config_main) or stirb;
+my $cfg = Config::IniFiles->new(-file => $config_main) or die "@Config::IniFiles::errors";
 
 #check variables of hostfile
 #a check of the variables is necessary here
+
 if($cfg->SectionExists("main")){
 	for(("path", "backup", "host", "dist", "pkgINS", "pkgREM", "repServerUpd", "repClientUpd")){
-		if($cfg->val("host", $_)){
-			if($_ == "path"){
-				$main{"config_pkg"} = $cfg->val("main", $_) . $config_main;
+		if(defined $cfg->val("main", $_)){
+			print $_ . "\n";
+			if($_ eq 'path'){
+				##DEBUG
+				print $_ . ":" . $cfg->val("main", $_) . "\n";
+				$main{"config_pkg"} = $cfg->val("main", $_) . $config_pkg;
 			}
-			else {
-				$main{$_} = $cfg->val("main", $_);
-			}
+			$main{$_} = $cfg->val("main", $_);
 		}
 		##later remove this else if
 		elsif($_ == "repServerUpd" || $_ == "repClientUpd"){
@@ -115,8 +88,17 @@ else {
 undef $cfg;
 ##END READ MAIN CONFIG
 
+##DEBUG
+print "\n";
+for(keys %main){
+		print "$_";
+		print " : ";
+		print $main{$_};
+		print "\n";
+}
+
 ##INIT PACKAGES-CONFIG
-my $pkg = Config::IniFiles->new(-file => $main{"path"} . $config_pkg) or stirb;
+my $pkg = Config::IniFiles->new(-file => $main{"path"} . $config_pkg);
 ##END INIT PACKAGES CONFIG
 
 ##DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
@@ -142,13 +124,17 @@ if($check_config){
 #PAKETE AUSLESEN, WELCHE GEBRAUCHT WERDEN
 ##todo
 #hier schauen, ob die if-abfrage unnötig ist und @config::inifiles::errors das auch ausgibt!
-for $package (@packages){
-	if($package == $pkg->val("$main{host} $package", "pkg") or stirb){
+print $mode;
+for $package (@pkgs){
+	if($package == $pkg->val("$main{host} $package", "pkg")){
 		hook("pre");
+
+		print $mode;
 		if($mode == "pi"){
+		print "test";
 			hook("pre_pkg_install");
 
-			for $dist ($pkg->val("$main{host} $package", "dist") or stirb){
+			for $dist ($pkg->val("$main{host} $package", "dist")){
 				if($dist =~ /^$main{dist}\s*:(.*)/){
 					@syspkgs = split(" ", $1);
 				}
@@ -172,8 +158,8 @@ for $package (@packages){
 		if($mode == "cr" || $mode == "pr"){
 			hook("pre_confif_remove");
 
-			for $file ($pkg->val("$main{host} $package", "file") or stirb){
-				($ffile,$fdest,$fmode,$fowner,$fgroup) = split(",", $file);
+			for $file ($pkg->val("$main{host} $package", "file")){
+				($ffile,$fdest) = split(",", $file);
 				if($main{backup}){
 					system "mv -v $fdest, $main{path}/backup/$fdest" or die "Backup failed: $!";
 				}
@@ -188,7 +174,7 @@ for $package (@packages){
 		if($mode == "pr"){
 			hook("pre_pkg_remove");
 
-			for $dist ($pkg->val("$main{host} $package", "dist") or stirb){
+			for $dist ($pkg->val("$main{host} $package", "dist")){
 				if($dist =~ /^$main{dist}\s*:(.*)/){
 					@syspkgs = split(" ", $1);
 				}
@@ -212,7 +198,7 @@ for $package (@packages){
 		if($mode == "ci" || $mode == "pi"){
 			hook("pre_config_install");
 			
-			for $file ($pkg->val("$main{host} $package", "file") or stirb){
+			for $file ($pkg->val("$main{host} $package", "file")){
 				my ($ffile,$fdest,$fmode,$fowner,$fgroup) = split(",", $file);
 				my ($fuid,$fuid,$fuid) = getpwnam($fowner) or die "$fowner not in passwd file";
 				my ($fgid,$fgid,$fgid) = getgrnam($fgroup) or die "$fgroup not passwd file";

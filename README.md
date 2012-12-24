@@ -46,7 +46,6 @@ You have to combine at least two of those four options together
 * -U	| Update Configfiles
 
 OPTIONs:
-  * -b --backup					| save the config-file of the destination (overwrites values, specified in the condecht-config)
   * -a --config $file		| take $file as alternative config-file for condecht
   *    --check					| check the config-file of condecht for errors (missing files, etc)
   * -h --help						| print help and exit
@@ -148,6 +147,7 @@ There are a few variables, which are important:
 Brainstorm
 ----------
 * Backup des orginalen config-files -> /etc/condecht->main->backup
+	* Getopt muss noch $backup lesen
 * Wenn hostname nicht eindeutig, aus $datei auslesen -> /etc/condecht
 * Conf-dir Prefix -> path
 
