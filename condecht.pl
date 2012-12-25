@@ -64,16 +64,15 @@ my $cfg = Config::IniFiles->new(-file => $config_main) or die "@Config::IniFiles
 if($cfg->SectionExists("main")){
 	for(("path", "backup", "host", "dist", "pkgINS", "pkgREM", "repServerUpd", "repClientUpd")){
 		if(defined $cfg->val("main", $_)){
-			print $_ . "\n";
 			if($_ eq 'path'){
 				##DEBUG
-				print $_ . ":" . $cfg->val("main", $_) . "\n";
+				#print $_ . ":" . $cfg->val("main", $_) . "\n";
 				$main{"config_pkg"} = $cfg->val("main", $_) . $config_pkg;
 			}
 			$main{$_} = $cfg->val("main", $_);
 		}
 		##later remove this else if
-		elsif($_ == "repServerUpd" || $_ == "repClientUpd"){
+		elsif($_ eq "repServerUpd" || $_ eq "repClientUpd"){
 			##these options are not necessary yet
 			$main{$_} = "";
 		}
@@ -104,10 +103,10 @@ my $pkg = Config::IniFiles->new(-file => $main{"path"} . $config_pkg);
 ##DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
 ##list packages and hosts
 if($list){
-	if($list == "hosts"){
+	if($list eq "hosts"){
 		#for($pkg){}
 	}
-	if($list == "pkg"){
+	if($list eq "pkg"){
 		#for(){}
 	}
 	exit(0);
@@ -124,13 +123,11 @@ if($check_config){
 #PAKETE AUSLESEN, WELCHE GEBRAUCHT WERDEN
 ##todo
 #hier schauen, ob die if-abfrage unnötig ist und @config::inifiles::errors das auch ausgibt!
-print $mode;
 for $package (@pkgs){
-	if($package == $pkg->val("$main{host} $package", "pkg")){
+	if($package eq $pkg->val("$main{host} $package", "pkg")){
 		hook("pre");
 
-		print $mode;
-		if($mode == "pi"){
+		if($mode eq "pi"){
 		print "test";
 			hook("pre_pkg_install");
 
@@ -155,7 +152,7 @@ for $package (@pkgs){
 			hook("post_pkg_install");
 		}
 
-		if($mode == "cr" || $mode == "pr"){
+		if($mode eq "cr" || $mode eq "pr"){
 			hook("pre_confif_remove");
 
 			for $file ($pkg->val("$main{host} $package", "file")){
@@ -171,7 +168,7 @@ for $package (@pkgs){
 			hook("post_config_remove");
 		}
 
-		if($mode == "pr"){
+		if($mode eq "pr"){
 			hook("pre_pkg_remove");
 
 			for $dist ($pkg->val("$main{host} $package", "dist")){
@@ -195,14 +192,17 @@ for $package (@pkgs){
 			hook("post_pkg_remove");
 		}
 
-		if($mode == "ci" || $mode == "pi"){
+		if($mode eq "ci" || $mode eq "pi"){
 			hook("pre_config_install");
 			
 			for $file ($pkg->val("$main{host} $package", "file")){
+				print $file . "\n";
 				my ($ffile,$fdest,$fmode,$fowner,$fgroup) = split(",", $file);
 				my ($fuid,$fuid,$fuid) = getpwnam($fowner) or die "$fowner not in passwd file";
 				my ($fgid,$fgid,$fgid) = getgrnam($fgroup) or die "$fgroup not passwd file";
-				system "rm -v $fdest";
+				#system "rm -q $fdest";
+				$file = $main{path} . "host-" . $main{host} . ".d/" . $package . ".d/" . $file;
+				print $file;
 				system "cp -v $ffile $fdest";
 				chmod oct($fmode), $fdest;
 				chown $fuid, $fguid, $fdest;
@@ -211,9 +211,6 @@ for $package (@pkgs){
 			hook("post_config_install");
 		}
 
-		else {
-			die "There's a heavy failure in the software: \$mode == $mode.";
-		}
 		hook("post");
 	}
 }
