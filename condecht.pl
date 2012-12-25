@@ -24,7 +24,7 @@ my $config_pkg = "packages.conf";
 
 ##HOOK-Functions
 sub hook {
-	print "@_\n";
+	system "$main{path}host-$main{host}.d/$package.d/$_" if( -x "$main{path}host-$main{host}.d/$package.d/$_");
 }
 ##END USED FUNCTIONS
 
@@ -47,8 +47,9 @@ GetOptions(
 	"Sc" => sub { if(!$mode){ $mode = "Sc"; } else { exit(1); }},
 	"Ss" => sub { if(!$mode){ $mode = "Sc"; } else { exit(1); }},
 );
-##CHECK PARAMETERS
 
+##CHECK PARAMETERS
+	##EMPTY
 ##END CHECK PARAMETERS
 
 ##READ MAIN CONFIG ##
