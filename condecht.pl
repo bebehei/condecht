@@ -6,7 +6,6 @@ use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use Config::IniFiles;
-use File::Copy;
 ##END LOAD MODULES
 
 ##DECLARE EMPTY VARIABLES
@@ -14,13 +13,14 @@ my $mode;    #decide, whether install/remove config/package
 my @syspkgs; #packages for the system packagemanager
 my @pkgs;    #packages of condecht to install
 my %main;    #the information of the main-section in $config_main
+my %files;   #all values of the parameter file at the depending
+             #sections to all @pkgs
 my $host;
 ##DECLARE EMPTY VARIABLES
 
 ## DEFAULT VARIABLES
 my $config_main = "/etc/condecht";
-##temp
-my $config_pkg = "packages.conf.new";
+my $config_pkg = "packages.conf";
 ##END DEFAULT VARIABLES
 
 ##HOOK-Functions
@@ -45,7 +45,7 @@ GetOptions(
 	"pr=s@"      => sub { if(!$mode){ $mode = "pr"; @pkgs = @_; shift(@pkgs); } else { exit(1); }},
 	"ci=s@"      => sub { if(!$mode){ $mode = "ci"; @pkgs = @_; shift(@pkgs); } else { exit(1); }},
 	"cr=s@"      => sub { if(!$mode){ $mode = "cr"; @pkgs = @_; shift(@pkgs); } else { exit(1); }},
-	##list hosts/packages
+	##list packages
 	"lp"         => sub { if(!$mode){ $mode = "lp"; } else { exit(1); }},
 	##updating the repo or the client
 	"Sc"         => sub { if(!$mode){ $mode = "sc"; } else { exit(1); }},
@@ -172,7 +172,6 @@ if($mode eq "cr" || $mode eq "pr"){
 		($fdest) = split(",", $file);
 
 		if($main{backup}){
-
 			my $fdest2 = $fdest;
 			$fdest2 =~ s/^\///;
 			$fdest2 =~ s/\//-/g;
