@@ -131,13 +131,17 @@ for $package (@pkgs){
 	unless($pkg->SectionExists("$package $main{host}")){
 		warn "Section [$package $main{host}] missing in $main{config_pkg}";
 	}
+	
+	for $note ($pkg->val("$package all", "note"), $pkg->val("$package $main{host}", "note")){
+		print "$package: $note\n";
+	}
 
 	for $dist ($pkg->val("$package all", "dist"), $pkg->val("$package $main{host}", "dist")){
 		if($dist =~ /^$main{dist}\s*:(.*)/){
 			push @syspkgs, split(" ", $1);
-			}
 		}
-		
+	}
+
 	for $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
 		($fdest,$ffile,$fmode,$fuser,$fgroup) = split(",", $file);
 		if($files{$fdest}){
