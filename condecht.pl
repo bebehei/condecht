@@ -5,6 +5,8 @@ use warnings;
 #use strict;
 use Getopt::Long;
 use Pod::Usage;
+#use Config::IniFiles or
+use lib "./lib";
 use Config::IniFiles;
 ##END LOAD MODULES
 
@@ -47,9 +49,8 @@ GetOptions(
 	"cr=s@"      => sub { if(!$mode){ $mode = "cr"; @pkgs = @_; shift(@pkgs); } else { exit(1); }},
 	##list packages
 	"lp"         => sub { if(!$mode){ $mode = "lp"; } else { exit(1); }},
-	##updating the repo or the client
-	"Sc"         => sub { if(!$mode){ $mode = "sc"; } else { exit(1); }},
-	"Ss"         => sub { if(!$mode){ $mode = "ss"; } else { exit(1); }},
+	#backup
+	"b|backup"   => sub { if(!$mode){ $mode = "ba"; } else { exit(1); }},
 );
 
 ##CHECK PARAMETERS
@@ -73,6 +74,9 @@ if($cfg->SectionExists("main")){
 				##add trailing slash
 				unless($main{path} =~ /\/$/){
 					$main{path} = $main{path} . "/";
+				}
+				unless($main{path} =~ /^\//){
+					die "Path is no absolute path";
 				}
 				$main{"config_pkg"} = $main{path} . $config_pkg;
 			}
@@ -114,6 +118,9 @@ if($mode eq "cc"){
 	die "check config not implemented";
 	#checkconfig();
 }
+if($mode eq "ba"){
+	@pkgs = $pkg->Groups;
+}
 if($mode eq "sc"){
 	#update client
 	die "update client not implemented yet";
@@ -130,6 +137,7 @@ for $package (@pkgs){
 	}
 	unless($pkg->SectionExists("$package $main{host}")){
 		warn "Section [$package $main{host}] missing in $main{config_pkg}";
+		print "penis";
 	}
 	
 	for $note ($pkg->val("$package all", "note"), $pkg->val("$package $main{host}", "note")){
@@ -153,6 +161,17 @@ for $package (@pkgs){
 }
 	
 hook("pre");
+
+if($mode eq "ba"){
+	for $file (values %files){
+		my ($fdest,$ffile,$fmode,$fowner,$fgroup) = split(",", $file);
+		
+		($mday,$mon,$year) = (localtime(time))[3,4,5];
+		$year = $year + 1900;
+		$mon = $mon + 1;
+		system "cp -v --parents $fdest $main{path}$main{host}/backup.d/$mday-$mon-$year/";
+	}
+}
 
 if($mode eq "pi"){
 	hook("pre_pkg_install");
