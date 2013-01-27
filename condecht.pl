@@ -38,23 +38,27 @@ sub hook {
 ##READ COMMAND LINE PARAMETERS ##
 GetOptions(
 	##general options
-	"c|config=s" => \$config_main,
-	"h|host=s"   => \$host,
-	"check"      => sub { if(!$mode){ $mode = "cc"; } else { exit(1); }},
-	"help|h"     => sub { pod2usage(1) },
+	"c|config=s"	=> \$config_main,
+	"h|host=s"		=> \$host,
+	"check"				=> sub { if(!$mode){ $mode = "cc"; } else { exit(1); }},
+	"help|h"			=> sub { pod2usage(1) },
+
 	##install/remove configs/packages
-	"pi=s@"      => sub { if(!$mode){ $mode = "pi"; @pkgs = @_; shift(@pkgs); } else { exit(1); }},
-	"pr=s@"      => sub { if(!$mode){ $mode = "pr"; @pkgs = @_; shift(@pkgs); } else { exit(1); }},
-	"ci=s@"      => sub { if(!$mode){ $mode = "ci"; @pkgs = @_; shift(@pkgs); } else { exit(1); }},
-	"cr=s@"      => sub { if(!$mode){ $mode = "cr"; @pkgs = @_; shift(@pkgs); } else { exit(1); }},
+#print @_ . "\n";
+#print @pkgs . "\n";
+	"pi=s{,}"			=> sub { if(!$mode or ($mode eq "pi")){ $mode = "pi"; shift(@_); push @pkgs, @_; } else { exit(1); }},
+	"pr=s{,}"			=> sub { if(!$mode or ($mode eq "pr")){ $mode = "pr"; shift(@_); push @pkgs, @_; } else { exit(1); }},
+	"ci=s{,}"			=> sub { if(!$mode or ($mode eq "ci")){ $mode = "ci"; shift(@_); push @pkgs, @_; } else { exit(1); }},
+	"cr=s{,}"			=> sub { if(!$mode or ($mode eq "cr")){ $mode = "cr"; shift(@_); push @pkgs, @_; } else { exit(1); }},
+
 	##list packages
-	"lp"         => sub { if(!$mode){ $mode = "lp"; } else { exit(1); }},
+	"lp"					=> sub { if(!$mode){ $mode = "lp"; } else { exit(1); }},
 	#backup
-	"b|backup"   => sub { if(!$mode){ $mode = "ba"; } else { exit(1); }},
+	"b|backup"		=> sub { if(!$mode){ $mode = "ba"; } else { exit(1); }},
 );
 
 ##CHECK PARAMETERS
-if(!defined $mode){
+if(!$mode){
 	die "No mode specified!";
 }
 ##END CHECK PARAMETERS
@@ -137,7 +141,6 @@ for $package (@pkgs){
 	}
 	unless($pkg->SectionExists("$package $main{host}")){
 		warn "Section [$package $main{host}] missing in $main{config_pkg}";
-		print "penis";
 	}
 	
 	for $note ($pkg->val("$package all", "note"), $pkg->val("$package $main{host}", "note")){
@@ -231,8 +234,8 @@ if($mode eq "ci" || $mode eq "pi"){
 		my ($fdest,$ffile,$fmode,$fowner,$fgroup) = split(",", $file);
 		
 		system "cp -v $ffile $fdest";
-		system "chown -v $fowner:$fgroup $fdest";
-		system "chmod -v $fmode $fdest";
+		system "chown $fowner:$fgroup $fdest";
+		system "chmod $fmode $fdest";
 	}
 	
 	hook("post_config_install");
