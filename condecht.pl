@@ -125,13 +125,6 @@ if($mode eq "cc"){
 if($mode eq "ba"){
 	@pkgs = $pkg->Groups;
 }
-if($mode eq "sc"){
-	#update client
-	die "update client not implemented yet";
-}
-if($mode eq "ss"){
-	die "update Server not implemented yet";
-}
 ##END DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
 
 #READ PACKAGE CONFIGS
