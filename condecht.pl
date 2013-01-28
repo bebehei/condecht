@@ -146,6 +146,13 @@ for $package (@pkgs){
 		}
 	}
 
+	for $dep ($pkg->val("$package all", "dep"), $pkg->val("$package $main{host}", "dep")){
+		for(split(" ", $dep)){
+			print "ADDED package $_ as dependency from $package\n";
+			push @pkgs, $_;
+		}
+	}
+
 	for $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
 		($fdest,$ffile,$fmode,$fuser,$fgroup) = split(",", $file);
 		if($files{$fdest}){
