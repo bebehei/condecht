@@ -5,6 +5,7 @@ use warnings;
 #use strict;
 use Getopt::Long;
 use Pod::Usage;
+use File::Path;
 #use Config::IniFiles or
 use lib "./lib";
 use Config::IniFiles;
@@ -122,8 +123,26 @@ if($mode eq "cc"){
 	die "check config not implemented";
 	#checkconfig();
 }
+
 if($mode eq "ba"){
-	@pkgs = $pkg->Groups;
+	($mday,$mon,$year) = (localtime(time))[3,4,5];
+	$year = $year + 1900;
+	$mon = $mon + 1;
+
+	for $package ($pkg->Groups){
+		$mkpath = 0;
+		for $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
+			mkpath "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/"
+				if($mkpath == 0);
+			$mkpath = 1;
+			my ($fdest,$ffile,$fmode,$fowner,$fgroup) = split(",", $file);
+		
+			system "cp -v $fdest $main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$ffile";
+		}
+	}
+	system "chmod 755 -R $main{path}backup.d/$main{host}/";
+	system "chown `id -nu` -R $main{path}backup.d/$main{host}/";
+	exit(0);
 }
 ##END DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
 
@@ -146,7 +165,7 @@ for $package (@pkgs){
 		}
 	}
 
-	for $dep ($pkg->val("$package all", "dep"), $pkg->val("$package $main{host}", "dep")){
+	for $dep ($pkg->val("$package all", "deps"), $pkg->val("$package $main{host}", "deps")){
 		for(split(" ", $dep)){
 			print "ADDED package $_ as dependency from $package\n";
 			push @pkgs, $_;
@@ -165,16 +184,6 @@ for $package (@pkgs){
 	
 hook("pre");
 
-if($mode eq "ba"){
-	for $file (values %files){
-		my ($fdest,$ffile,$fmode,$fowner,$fgroup) = split(",", $file);
-		
-		($mday,$mon,$year) = (localtime(time))[3,4,5];
-		$year = $year + 1900;
-		$mon = $mon + 1;
-		system "cp -v --parents $fdest $main{path}$main{host}/backup.d/$mday-$mon-$year/";
-	}
-}
 
 if($mode eq "pi"){
 	hook("pre_pkg_install");
