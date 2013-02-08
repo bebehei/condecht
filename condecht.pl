@@ -140,8 +140,10 @@ if($mode eq "ba"){
 			system "cp -v $fdest $main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$ffile";
 		}
 	}
+	system "cp -v $config_main $main{path}backup.d/$main{host}/$mday-$mon-$year/condecht";
+
 	system "chmod 755 -R $main{path}backup.d/$main{host}/";
-	system "chown `id -nu` -R $main{path}backup.d/$main{host}/";
+	system "chown `id -nu`:`id -ng` -R $main{path}backup.d/$main{host}/";
 	exit(0);
 }
 ##END DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
