@@ -66,7 +66,7 @@ if(!$mode){
 ##END CHECK PARAMETERS
 
 ##READ MAIN CONFIG ##
-my $cfg = Config::IniFiles->new(-file => $config_main) or die "@Config::IniFiles::errors";
+my $cfg = Config::IniFiles->new(-file => $config_main, -nocase => 1) or die "@Config::IniFiles::errors";
 if($cfg->SectionExists("main")){
 	for(("path", "backup", "host", "dist", "pkgINS", "pkgREM", "repServerUpd", "repClientUpd", "user", "group", "home", "defperm")){
 		if(defined $cfg->val("main", $_)){
@@ -136,7 +136,7 @@ undef $cfg;
 ##END READ MAIN CONFIG
 
 ##INIT PACKAGES-CONFIG
-my $pkg = Config::IniFiles->new(-file => $main{config_pkg}) or die "@Config::IniFiles::errors";
+my $pkg = Config::IniFiles->new(-file => $main{config_pkg}, -nocase => 1) or die "@Config::IniFiles::errors";
 ##END INIT PACKAGES CONFIG
 
 ##DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
