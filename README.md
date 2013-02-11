@@ -127,7 +127,11 @@ There are a few variables, which are important:
 
 LICENSE
 -------
-Condecht is free software, you can distribute it and modify it under the terms of the GPL.
+Copyright 2013 by Benedikt Heine
+Condecht is free software, you can distribute it and modify it under the terms of the GPL. You'll find it in the file LICENSE or at http://www.gnu.org/licenses/.
+
+# LICENSE of the ./lib directory
+The ./lib directory contains the Config::IniFile module, which is distributed under the same terms of perl (GPL). The copyright of the whole ./lib directory is at its different owners.
 
 TODO
 ----
