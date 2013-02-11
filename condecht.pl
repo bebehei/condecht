@@ -9,6 +9,7 @@ use File::Path;
 #use Config::IniFiles or
 use lib "./lib";
 use Config::IniFiles;
+use File::Copy;
 ##END LOAD MODULES
 
 ##DECLARE EMPTY VARIABLES
@@ -67,7 +68,7 @@ if(!$mode){
 ##READ MAIN CONFIG ##
 my $cfg = Config::IniFiles->new(-file => $config_main) or die "@Config::IniFiles::errors";
 if($cfg->SectionExists("main")){
-	for(("path", "backup", "host", "dist", "pkgINS", "pkgREM", "repServerUpd", "repClientUpd")){
+	for(("path", "backup", "host", "dist", "pkgINS", "pkgREM", "repServerUpd", "repClientUpd", "user", "group", "home", "defperm")){
 		if(defined $cfg->val("main", $_)){
 			$main{$_} = $cfg->val("main", $_);
 
@@ -84,6 +85,33 @@ if($cfg->SectionExists("main")){
 					die "Path is no absolute path";
 				}
 				$main{"config_pkg"} = $main{path} . $config_pkg;
+			}
+			if($_ eq 'home'){
+				##add trailing slash
+				unless($main{home} =~ /\/$/){
+					$main{home} = $main{home} . "/";
+				}
+				unless($main{home} =~ /^\//){
+					die "Home is no absolute path";
+				}
+			}
+			if($_ eq "user"){
+					$main{uid} = getpwnam($main{user});
+			}
+			if($_ eq "group"){
+					$main{gid} = getgrnam($main{group});
+			}
+			if($_ eq "defperm"){
+				if(length($main{defperm}) == 3){
+					$main{defperm} = "0$main{defperm}";
+				}
+				if(length($main{defperm}) != 4){
+					die "permissions in defperm are not valid";
+				}
+				for $char (split(//, $main{defperm})){
+					die "permissions in defperm are not valid"
+						if(!(0 <= $char && $char <= 8));
+				}
 			}
 			if($_ eq "pkgINS" || $_ eq "pkgREM" || $_ eq "repServerUpd" || $_ eq "repClientUpd"){
 				unless($main{$_} =~ / $/){
@@ -129,21 +157,30 @@ if($mode eq "ba"){
 	$year = $year + 1900;
 	$mon = $mon + 1;
 
+	#snapshot main config-file
+	copy($config_main, "$main{path}backup.d/$main{host}/$mday-$mon-$year/condecht");
+	chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/$mday-$mon-$year/condecht";
+	chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$mday-$mon-$year/condecht";
+
 	for $package ($pkg->Groups){
-		$mkpath = 0;
 		for $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
-			mkpath "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/"
-				if($mkpath == 0);
-			$mkpath = 1;
+
 			my ($fdest,$ffile,$fmode,$fowner,$fgroup) = split(",", $file);
+
+			mkpath(
+				"$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/",
+				{	owner => $main{user},
+					group => $main{group},
+					mode => oct($main{defperm})
+				}
+			);
 		
-			system "cp -v $fdest $main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$ffile";
+			copy($fdest, "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$ffile");
+			chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$ffile";
+			chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$ffile";
 		}
 	}
-	system "cp -v $config_main $main{path}backup.d/$main{host}/$mday-$mon-$year/condecht";
 
-	system "chmod 755 -R $main{path}backup.d/$main{host}/";
-	system "chown `id -nu`:`id -ng` -R $main{path}backup.d/$main{host}/";
 	exit(0);
 }
 ##END DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
@@ -212,12 +249,10 @@ if($mode eq "cr" || $mode eq "pr"){
 			my $fdest2 = $fdest;
 			$fdest2 =~ s/^\///;
 			$fdest2 =~ s/\//-/g;
-
-			system "mv -v $fdest $main{path}backup/$fdest2";
+			
+			copy($fdest, "$main{path}backup.d/$main{host}/old/$fdest2");
 		}
-		else {
-			system "rm -v $fdest";
-		}
+		unlink($fdest);
 	}
 	
 	hook("post_config_remove");
@@ -243,10 +278,10 @@ if($mode eq "ci" || $mode eq "pi"){
 	
 	for $file (values %files){
 		my ($fdest,$ffile,$fmode,$fowner,$fgroup) = split(",", $file);
-		
-		system "cp -v $ffile $fdest";
-		system "chown $fowner:$fgroup $fdest";
-		system "chmod $fmode $fdest";
+
+		copy($ffile, $fdest);
+		chmod oct($fmode), $fdest;
+		chown getpwnam($fowner), getgrnam($fgroup), $fdest;
 	}
 	
 	hook("post_config_install");
