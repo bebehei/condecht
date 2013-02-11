@@ -15,6 +15,13 @@ Install it with `sudo cpan -i "Config::IniFiles"`
 
 There modules Getopt::Long and Pod::Usage should be included in a standard perl installation. If not install them with `sudo cpan -i Getopt::Long Pod::Usage`.
 
+Here is a list of all used modules:
+* Config::IniFiles;
+* Getopt::Long;
+* Pod::Usage;
+* File::Path;
+* File::Copy;
+
 Main Files
 ----------
 There are 3 Main Files:
@@ -57,8 +64,8 @@ You have to combine at least two of those four options together
   * --ci @packages | install config of @packages
   * --cr @packages | remove config of @packages
 
-  * -Sc || -Ss | These 2 Flags are used to update the Repository. In use-case: If you update the destination config-file, you just need to execute "condecht --Ss" (or something similar) and not to copy the file manually into your repository. For now, the script just dies with this option.
   * --lp | list the packages, configured in your packages.conf
+	* --ba | backup all configuration files to $condechtPATH/backup.d/$host/$date/$package/$file
 
 OPTIONs:
   * -c --config $file | take $file as alternative config-file for condecht
@@ -123,6 +130,10 @@ There are a few variables, which are important:
 	<td>file</td>
 	<td>It describes the config-files, where they are stored, what name they have, which group/owner and the mode. For more, check out the sample packages.conf file.</td>
 </tr>
+<tr>
+	<td>note</td>
+	<td>This field will be displayed while installation. When you want to get reminded of sth, for example copy the keys to a specific place use it.</td>
+</tr>
 </table>
 
 LICENSE
@@ -135,7 +146,6 @@ The ./lib directory contains the Config::IniFile module, which is distributed un
 
 TODO
 ----
-* Implement --sc and --ss
 * Write some examples
 
 Examples
