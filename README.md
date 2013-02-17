@@ -22,6 +22,11 @@ Here is a list of all used modules:
 * File::Path;
 * File::Copy;
 
+I'm new and i wanna start right now!
+------------------------------------
+
+Go into the HOWTO-directory. Read the textfile HOWTO.
+
 Main Files
 ----------
 There are 3 Main Files:

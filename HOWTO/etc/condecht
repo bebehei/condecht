@@ -1,0 +1,49 @@
+#Mind it: this file has to be placed at the end
+#to the directory /etc with the name condecht
+
+# in this file define at fist the "main" section
+[main]
+
+# at first give your host a unique hostname for condecht
+# name it like you want. it is not necessary to name it like your computer
+# dont use "all" as hostname
+host = bebe-arch-lap
+
+# lets define a distribution too
+# it will be very useful, if you work with one repository 
+# at 10 different machines with a few distributions
+# you don't have to retype all packages into your packages.conf for every host,
+# just for every distribution you use
+dist = arch
+
+# it is the directory path, where your repository
+# with your packages.conf-file is stored
+path = /root/condecht
+
+# if you activate this files get backed up into your
+# repository, if you remove them from the filesystem
+# if you accidentally remove some configs with condecht, you'll have backup
+backup = true
+
+# this is the command with what the system-packages get installed
+# if you use Debian or similar, there should stand:
+#
+# pkgINS = sudo apt-get install
+# pkgREM = sudo apt-get remove
+#
+# this below is for arch-linux
+pkgINS = sudo pacman -S
+pkgREM = sudo pacman -R
+
+# if you've got some user-specific configs which are not for your system,
+# your home-dir, fileowner, and filegroup are depending on the name of this user.
+# So in your packages.conf you use such replacers like $user$, $home$ and $group$
+# to handle such different usernames. below you can define, with what these will
+# get replaced
+user = bebe
+group = bebe
+home = /home/bebe
+
+# similar to the umask setup. But here deferperm 755 is the same as permission 755
+# so it is inverted
+defperm = 755

@@ -1,0 +1,5 @@
+##Here should be your own config-file of sshd
+
+sshParam sshValue
+
+This config-file should not work!

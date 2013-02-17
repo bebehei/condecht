@@ -1,0 +1,6 @@
+##Here should be your own config-file of ssh
+
+configOption blah
+sshParam blubb
+
+This config-file should not work!
