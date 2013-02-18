@@ -182,12 +182,11 @@ if($mode eq "cc"){
 	die "check config not implemented";
 	#checkconfig();
 	#brainstorm: what to check;
-	# check config, if all users are existing, groups too
-	# check for dependencies
 print "packages.conf location: $main{config_pkg}\n";
 for my $package ($pkg->Groups){
 	unless($pkg->SectionExists("$package all")){
 		warn "$package: section [$package all] does not exist";
+		break;
 	}
 	unless($pkg->SectionExists("$package $main{host}")){
 		warn "$package: section [$package $main{host}] does not exist";
@@ -202,10 +201,11 @@ for my $package ($pkg->Groups){
 		}
 	}
 
+	# check for dependencies
 	for my $dep ($pkg->val("$package all", "deps"), $pkg->val("$package $main{host}", "deps")){
 		for(split(" ", $dep)){
 			unless($pkg->SectionExists("$_ all")){
-				warn "$package has unresolved dependency $_\n"
+				warn "$package: unresolved dependency $_\n"
 			}
 		}
 	}
@@ -224,6 +224,7 @@ for my $package ($pkg->Groups){
 			warn "$package: Double Definiton of file $fdest";
 		}
 
+		# check config, if all users are existing, groups too
 		##check if user exists, if yes -> write uid back on $fuser
 		if(getpwnam($fuser)){ $fuser = (getpwnam($fuser))[2]; }
 		else { warn "$package: The user $fuser does not exist"; }
@@ -241,13 +242,12 @@ for my $package ($pkg->Groups){
 			die "check perms";
 		}
 		else {
-			warn "File $fdest is not available. Is the package $package installed?";
+			warn "$package: File $fdest is not available in filesystem.";
 		}
 		# check config, if all files are in repo
 		if(! -f $ffile){
-			warn "File $ffile is not available.";
+			warn "$package: file $ffile is not available.";
 		}
-		
 	}
 }
 }
