@@ -70,6 +70,8 @@ GetOptions(
 	"d|dir=s"			=> \$main{home},
 	"g|group=s"		=> \$main{group},
 	"u|user=s"		=> \$main{user},
+	"v|verbose"		=> \$main{verb},
+	"debug"				=> \$main{debug},
 	"opt=s%"			=> \%main,
 	"check"				=> sub { if(!$mode){ $mode = "cc"; } else { exit(1); }},
 	"help"				=> sub { pod2usage(1) },
@@ -86,6 +88,9 @@ GetOptions(
 ##CHECK PARAMETERS
 if(!$mode){
 	die "no mode specified!";
+}
+if($main{debug}){
+	warn "option debug is not in use yet";
 }
 ##END CHECK PARAMETERS
 
@@ -177,10 +182,74 @@ if($mode eq "cc"){
 	die "check config not implemented";
 	#checkconfig();
 	#brainstorm: what to check;
-	# check for installed files
-	# check for permissions, owner, group of installed files
-	# check config, if all files are in repo
 	# check config, if all users are existing, groups too
+	# check for dependencies
+print "packages.conf location: $main{config_pkg}\n";
+for my $package ($pkg->Groups){
+	unless($pkg->SectionExists("$package all")){
+		warn "$package: section [$package all] does not exist";
+	}
+	unless($pkg->SectionExists("$package $main{host}")){
+		warn "$package: section [$package $main{host}] does not exist";
+	}
+	for my $note ($pkg->val("$package all", "note"), $pkg->val("$package $main{host}", "note")){
+		print "$package: note: $note\n";
+	}
+
+	for my $dist ($pkg->val("$package all", "dist"), $pkg->val("$package $main{host}", "dist")){
+		if($dist =~ /^$main{dist}\s*:(.*)/){
+			push @syspkgs, split(" ", $1);
+		}
+	}
+
+	for my $dep ($pkg->val("$package all", "deps"), $pkg->val("$package $main{host}", "deps")){
+		for(split(" ", $dep)){
+			unless($pkg->SectionExists("$_ all")){
+				warn "$package has unresolved dependency $_\n"
+			}
+		}
+	}
+
+	for my $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
+		my ($fdest,$ffile,$fmode,$fuser,$fgroup) = split(",", $file);
+
+		# replace the strings $home$ $user$ and $group$
+		$fdest =~ s/\$home\$\//$main{home}/; ##used to prevent a double slash after home-dir
+		$fdest =~ s/\$home\$/$main{home}/;
+		$fuser =~ s/\$user\$/$main{user}/;
+		$fgroup =~ s/\$group\$/$main{group}/;
+		$ffile = "$main{path}$main{host}/$package/$ffile";
+
+		if($files{$fdest}){
+			warn "$package: Double Definiton of file $fdest";
+		}
+
+		##check if user exists, if yes -> write uid back on $fuser
+		if(getpwnam($fuser)){ $fuser = (getpwnam($fuser))[2]; }
+		else { warn "$package: The user $fuser does not exist"; }
+		#same as above, just for the group
+		if(getgrnam($fgroup)){ $fgroup = (getgrnam($fgroup))[2]; }
+		else { warn "$package: The group $fgroup does not exist"; }
+
+		$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fgroup));
+		
+		#check the file-existence
+		# check for installed files
+		# check for permissions, owner, group of installed files
+		if(-f $fdest){
+			#check perms
+			die "check perms";
+		}
+		else {
+			warn "File $fdest is not available. Is the package $package installed?";
+		}
+		# check config, if all files are in repo
+		if(! -f $ffile){
+			warn "File $ffile is not available.";
+		}
+		
+	}
+}
 }
 
 if($mode eq "ba"){
@@ -226,7 +295,8 @@ for my $package (@pkgs){
 		die "Section [$package all] missing in $main{config_pkg}";
 	}
 	unless($pkg->SectionExists("$package $main{host}")){
-		warn "Section [$package $main{host}] missing in $main{config_pkg}";
+		warn "Section [$package $main{host}] missing in $main{config_pkg}"
+				if($main{verbose});
 	}
 	
 	for my $note ($pkg->val("$package all", "note"), $pkg->val("$package $main{host}", "note")){
@@ -241,7 +311,8 @@ for my $package (@pkgs){
 
 	for my $dep ($pkg->val("$package all", "deps"), $pkg->val("$package $main{host}", "deps")){
 		for(split(" ", $dep)){
-			print "ADDED package $_ as dependency from $package\n";
+			print "ADDED package $_ as dependency from $package\n"
+				if($main{verbose});
 			push @pkgs, $_;
 		}
 	}
@@ -249,16 +320,17 @@ for my $package (@pkgs){
 	for my $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
 		my ($fdest,$ffile,$fmode,$fuser,$fgroup) = split(",", $file);
 
-		if($files{$fdest}){
-			warn "Overwriting\n$files{$ffile}\nwith\n$file\n"
-				;#if $main{verbose};
-		}
-
 		# replace the strings $home$ $user$ and $group$
 		$fdest =~ s/\$home\$\//$main{home}/; ##used to prevent a double slash after home-dir
 		$fdest =~ s/\$home\$/$main{home}/;
 		$fuser =~ s/\$user\$/$main{user}/;
 		$fgroup =~ s/\$group\$/$main{group}/;
+		$ffile = "$main{path}$main{host}/$package/$ffile";
+
+		if($files{$fdest}){
+			warn "Overwriting\n$files{$ffile}\nwith\n$file\n"
+				if($main{verbose});
+		}
 
 		##check if user exists, if yes -> write uid back on $fuser
 		if(getpwnam($fuser)){ $fuser = (getpwnam($fuser))[2]; }
@@ -267,7 +339,7 @@ for my $package (@pkgs){
 		if(getgrnam($fgroup)){ $fgroup = (getgrnam($fgroup))[2]; }
 		else { die "The group $fgroup does not exist"; }
 
-		$files{$fdest} = join(",", ($fdest, "$main{path}$main{host}/$package/$ffile", $fmode, $fuser, $fgroup));
+		$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fgroup));
 	}
 }
 
