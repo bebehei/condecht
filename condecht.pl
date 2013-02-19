@@ -93,7 +93,7 @@ if(!$mode){
 if($main{debug}){
 	warn "option debug is not in use yet";
 }
-if{!$main{prefix}){
+if(!$main{prefix}){
 	$main{prefix} = "";
 }
 ##END CHECK PARAMETERS
@@ -190,7 +190,7 @@ print "packages.conf location: $main{config_pkg}\n";
 for my $package ($pkg->Groups){
 	unless($pkg->SectionExists("$package all")){
 		warn "$package: section [$package all] does not exist";
-		break;
+		#has to die here break;
 	}
 	unless($pkg->SectionExists("$package $main{host}")){
 		warn "$package: section [$package $main{host}] does not exist";
