@@ -17,7 +17,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#   You'll find the GPL in the LICENSE file.
+#   You'll find the GPL in the file with the name LICENSE.
 #
 
 ##LOAD MODULES
@@ -72,6 +72,7 @@ GetOptions(
 	"u|user=s"		=> \$main{user},
 	"v|verbose"		=> \$main{verb},
 	"debug"				=> \$main{debug},
+	"p|prefix=s"	=> \$main{prefix},
 	"opt=s%"			=> \%main,
 	"check"				=> sub { if(!$mode){ $mode = "cc"; } else { exit(1); }},
 	"help"				=> sub { pod2usage(1) },
@@ -91,6 +92,9 @@ if(!$mode){
 }
 if($main{debug}){
 	warn "option debug is not in use yet";
+}
+if{!$main{prefix}){
+	$main{prefix} = "";
 }
 ##END CHECK PARAMETERS
 
@@ -326,6 +330,7 @@ for my $package (@pkgs){
 		$fuser =~ s/\$user\$/$main{user}/;
 		$fgroup =~ s/\$group\$/$main{group}/;
 		$ffile = "$main{path}$main{host}/$package/$ffile";
+		$fdest = $main{prefix} . $fdest;
 
 		if($files{$fdest}){
 			warn "Overwriting\n$files{$ffile}\nwith\n$file\n"
