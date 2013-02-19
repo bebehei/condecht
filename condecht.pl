@@ -338,10 +338,10 @@ for my $package (@pkgs){
 		}
 
 		##check if user exists, if yes -> write uid back on $fuser
-		if(getpwnam($fuser)){ $fuser = (getpwnam($fuser))[2]; }
+		if(getpwnam($fuser) != undef){ $fuser = (getpwnam($fuser))[2]; }
 		else { die "The user $fuser does not exist"; }
 		#same as above, just for the group
-		if(getgrnam($fgroup)){ $fgroup = (getgrnam($fgroup))[2]; }
+		if(getgrnam($fgroup) != undef){ $fgroup = (getgrnam($fgroup))[2]; }
 		else { die "The group $fgroup does not exist"; }
 
 		$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fgroup));
