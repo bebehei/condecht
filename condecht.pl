@@ -230,10 +230,10 @@ for my $package ($pkg->Groups){
 
 		# check config, if all users are existing, groups too
 		##check if user exists, if yes -> write uid back on $fuser
-		if(getpwnam($fuser) != undef){ $fuser = (getpwnam($fuser))[2]; }
+		if(defined getpwnam($fuser)){ $fuser = (getpwnam($fuser))[2]; }
 		else { warn "$package: The user $fuser does not exist"; }
 		#same as above, just for the group
-		if(getgrnam($fgroup) != undef){ $fgroup = (getgrnam($fgroup))[2]; }
+		if(defined getgrnam($fgroup)){ $fgroup = (getgrnam($fgroup))[2]; }
 		else { warn "$package: The group $fgroup does not exist"; }
 
 		$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fgroup));
@@ -338,10 +338,10 @@ for my $package (@pkgs){
 		}
 
 		##check if user exists, if yes -> write uid back on $fuser
-		if(getpwnam($fuser) != undef){ $fuser = (getpwnam($fuser))[2]; }
+		if(defined getpwnam($fuser)){ $fuser = (getpwnam($fuser))[2]; }
 		else { die "The user $fuser does not exist"; }
 		#same as above, just for the group
-		if(getgrnam($fgroup) != undef){ $fgroup = (getgrnam($fgroup))[2]; }
+		if(defined getgrnam($fgroup)){ $fgroup = (getgrnam($fgroup))[2]; }
 		else { die "The group $fgroup does not exist"; }
 
 		$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fgroup));
