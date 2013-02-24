@@ -30,6 +30,7 @@ use Getopt::Long;
 use Pod::Usage;
 use File::Path;
 use File::Copy;
+use File::Basename;
 ##END LOAD MODULES
 
 ##DECLARE EMPTY VARIABLES
@@ -39,6 +40,7 @@ my @pkgs;    #packages of condecht to install
 my %main;    #the information of the main-section in $config_main
 my %files;   #all values of the parameter file at the depending
              #sections to all @pkgs
+my @notes;   #saves all notes, to print them at the end again
 ##DECLARE EMPTY VARIABLES
 
 ## DEFAULT VARIABLES
@@ -101,62 +103,13 @@ if(!$main{prefix}){
 ##READ MAIN CONFIG ##
 my $cfg = Config::IniFiles->new(-file => $config_main, -nocase => 1) or die "@Config::IniFiles::errors";
 if($cfg->SectionExists("main")){
-	for(("path", "backup", "host", "dist", "pkgINS", "pkgREM", "repServerUpd", "repClientUpd", "user", "group", "home", "defperm")){
+	for(("path", "backup", "host", "dist", "pkgINS", "pkgREM", "user", "group", "home", "defperm")){
 		if(defined $cfg->val("main", $_)){
 			##the value of the config file will be written into the $main{$_}
 			## only if it is not defined over commandline already
 			if(!$main{$_}){
 				$main{$_} = $cfg->val("main", $_);
 			}
-			if($_ eq 'path'){
-				##add trailing slash
-				unless($main{path} =~ /\/$/){
-					$main{path} = $main{path} . "/";
-				}
-				unless($main{path} =~ /^\//){
-					die "Path is no absolute path";
-				}
-				if(!$main{config_pkg}){
-					$main{config_pkg} = $main{path} . $config_pkg;
-				}
-			}
-			if($_ eq 'home'){
-				##add trailing slash
-				unless($main{home} =~ /\/$/){
-					$main{home} = $main{home} . "/";
-				}
-				unless($main{home} =~ /^\//){
-					die "Home is no absolute path";
-				}
-			}
-			if($_ eq "user"){
-					$main{uid} = getpwnam($main{user});
-			}
-			if($_ eq "group"){
-					$main{gid} = getgrnam($main{group});
-			}
-			if($_ eq "defperm"){
-				if(length($main{defperm}) == 3){
-					$main{defperm} = "0$main{defperm}";
-				}
-				if(length($main{defperm}) != 4){
-					die "permissions in defperm are not valid";
-				}
-				for my $char (split(//, $main{defperm})){
-					die "permissions in defperm are not valid"
-						if(!(0 <= $char && $char <= 8));
-				}
-			}
-			if($_ eq "pkgINS" || $_ eq "pkgREM" || $_ eq "repServerUpd" || $_ eq "repClientUpd"){
-				unless($main{$_} =~ / $/){
-					$main{$_} = $main{$_} . " ";
-				}
-			}
-		}
-		##later remove this elsif, when repServer* is implemented
-		elsif($_ eq "repServerUpd" || $_ eq "repClientUpd"){
-			##these options are not necessary yet
-			$main{$_} = "";
 		}
 		else {
 			die "Couldn't find definition of $_ in config-file $config_main";
@@ -164,9 +117,63 @@ if($cfg->SectionExists("main")){
 	}
 }
 else {
-	die "No Section host defined in config-file $config_main";
+	die "No Section main defined in config-file $config_main";
 }
 undef $cfg;
+
+#CHECK values of main config
+
+#add trailing space to execute systemcommand right
+$main{pkgINS} = $main{pkgINS} . " "
+	if($main{pkgINS} =~ / $/);
+$main{pkgREM} = $main{pkgREM} . " "
+	if($main{pkgREM} =~ / $/);
+
+# check config, if user and group exists
+# if true -> write it into $main{uid/gid}
+if(defined getpwnam($main{user})){
+	$main{uid} = (getpwnam($main{user}))[2];
+}
+else {
+	die "MAIN: The user $main{user} does not exist!\n";
+}
+if(defined getgrnam($main{group})){
+	$main{gid} = (getgrnam($main{group}))[2];
+}
+else {
+	die "MAIN: The group $main{group} does not exist!\n";
+}
+
+# add trailing slash
+unless($main{path} =~ /\/$/){
+	$main{path} = $main{path} . "/";
+}
+unless($main{path} =~ /^\//){
+	die "CONFIG: definition of path is no absolute path in $config_main\n";
+}
+# add trailing slash
+unless($main{home} =~ /\/$/){
+	$main{home} = $main{home} . "/";
+}
+unless($main{home} =~ /^\//){
+	die "MAIN: definition of home is no absolute path in $config_main\n";
+}
+
+# CHECK: defperm
+if(length($main{defperm}) == 3){
+	$main{defperm} = "0$main{defperm}";
+}
+else {
+	die "MAIN: permissions in defperm are not valid";
+}
+for my $char (split(//, $main{defperm})){
+	die "MAIN: permissions in defperm are not valid"
+		if(!(0 <= $char && $char <= 7));
+}
+
+# set path of packages.conf file
+$main{config_pkg} = $main{path} . $config_pkg;
+
 ##END READ MAIN CONFIG
 
 
@@ -183,184 +190,266 @@ if($mode eq "lp"){
 }
 #check config
 if($mode eq "cc"){
-	die "check config not implemented";
-	#checkconfig();
-	#brainstorm: what to check;
 	print "packages.conf location: $main{config_pkg}\n";
 
+	#$pkg->Groups: use all packages to check whole config
 	for my $package ($pkg->Groups){
+		#CHECK: Section Exists
 		unless($pkg->SectionExists("$package all")){
-			warn "$package: section [$package all] does not exist";
-			#has to die here break;
+			warn "$package: section [$package all] does not exist\n";
+			continue;
 		}
+
+		#CHECK: Section Exsists for host
 		unless($pkg->SectionExists("$package $main{host}")){
-			warn "$package: section [$package $main{host}] does not exist";
+			warn "$package: section [$package $main{host}] does not exist\n";
 		}
+
+		#PRINT: Every note of Sections
 		for my $note ($pkg->val("$package all", "note"), $pkg->val("$package $main{host}", "note")){
 			print "$package: note: $note\n";
 		}
-	
+		
+		#CHECK: System packages
+		my $count = 0;
 		for my $dist ($pkg->val("$package all", "dist"), $pkg->val("$package $main{host}", "dist")){
 			if($dist =~ /^$main{dist}\s*:(.*)/){
 				push @syspkgs, split(" ", $1);
+				$count++;
 			}
 		}
+		warn "$package: No Systempackages are defined for your distribution\n"
+			if($count == 0);
 	
-		# check for dependencies
+		#CHECK: Dependencies
 		for my $dep ($pkg->val("$package all", "deps"), $pkg->val("$package $main{host}", "deps")){
 			for(split(" ", $dep)){
-				unless($pkg->SectionExists("$_ all")){
-					warn "$package: unresolved dependency $_\n"
-				}
+				warn "$package: unresolved dependency $_\n"
+					unless($pkg->SectionExists("$_ all"));
 			}
 		}
 
+		#CHECK: Every File
 		for my $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
 			my ($fdest,$ffile,$fmode,$fuser,$fgroup) = split(",", $file);
+			my ($fuid, $fgid);
 
 			# replace the strings $home$ $user$ and $group$
-			$fdest =~ s/\$home\$\//$main{home}/; ##used to prevent a double slash after home-dir
+			$fdest =~ s/\$home\$\//$main{home}/; # used to prevent a double slash after home-dir
 			$fdest =~ s/\$home\$/$main{home}/;
 			$fuser =~ s/\$user\$/$main{user}/;
 			$fgroup =~ s/\$group\$/$main{group}/;
+
 			$ffile = "$main{path}$main{host}/$package/$ffile";
+			$fdest = $main{prefix} . $fdest;
 	
 			if($files{$fdest}){
-				warn "$package: Double Definiton of file $fdest";
+				warn "$package: duplicate definiton of file $fdest\n";
 			}
 
 			# check config, if all users are existing, groups too
-			##check if user exists, if yes -> write uid back on $fuser
-			if(defined getpwnam($fuser)){ $fuser = (getpwnam($fuser))[2]; }
-			else { warn "$package: The user $fuser does not exist"; }
-			#same as above, just for the group
-			if(defined getgrnam($fgroup)){ $fgroup = (getgrnam($fgroup))[2]; }
-			else { warn "$package: The group $fgroup does not exist"; }
+			# check if user exists, if yes -> write uid to $fuid
+			if(defined getpwnam($fuser)){
+				$fuid = (getpwnam($fuser))[2];
+			}
+			else {
+				warn "$package: The user $fuser does not exist\n";
+			}
+			# same as above, just for the group
+			if(defined getgrnam($fgroup)){
+				$fgid = (getgrnam($fgroup))[2];
+			}
+			else {
+				warn "$package: The group $fgroup does not exist\n";
+			}
 
-			$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fgroup));
+			$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fuid, $fgroup, $fgid));
 			
 			#check the file-existence
 			# check for installed files
 			# check for permissions, owner, group of installed files
 			if(-f $fdest){
-				#check perms
-				die "check perms";
+				#check filemode
+				if($fmode != sprintf "%o\n", (stat($fdest))[2] & 07777){
+					warn "$package: FILE: File $fdest has not mode $fmode\n";
+				}
+
+				#read uid and gid of files
+				my ($efuid, $efgid) = (stat($fdest))[4,5];
+				#transform uid and gid to usernames
+				my $efgroup = getgrgid($efgid);
+				my $efowner = getpwuid($efuid);
+
+				#warn if uid and gid are not the same as defined in packages.conf
+				warn "$package: FILE: File $fdest has user $efowner($efuid) instead of $fuser($fuid)\n"
+					if($fuid != $efuid);
+				warn "$package: FILE: File $fdest has group $efgroup($efuid) instead of $fgroup($fgid)\n"
+					if($fgid != $efgid);
 			}
 			else {
-				warn "$package: File $fdest is not available in filesystem.";
+				warn "$package: FILE: File $fdest is not available.\n";
 			}
 			# check config, if all files are in repo
 			if(! -f $ffile){
-				warn "$package: file $ffile is not available.";
+				warn "$package: REPO: File $ffile is not available.\n";
 			}
 		}
 	}
-}#END CHECK CONFIG
+	print "Registered system-packages:\n@syspkgs\n";
+}
+#END CHECK CONFIG
 
+##BEGIN BACKUP CONFIG FILES
 if($mode eq "ba"){
+	# get date of $today
 	my ($mday,$mon,$year) = (localtime(time))[3,4,5];
 	$year = $year + 1900;
 	$mon = $mon + 1;
+	my $today = "$mday-$mon-$year";
 
-	#snapshot main config-file
-	copy($config_main, "$main{path}backup.d/$main{host}/$mday-$mon-$year/condecht");
-	chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/$mday-$mon-$year/condecht";
-	chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$mday-$mon-$year/condecht";
+	#SAVE: $config_main
+	copy($config_main, "$main{path}backup.d/$main{host}/$today/condecht");
+	chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/$today/condecht";
+	chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$today/condecht";
 
 	for my $package ($pkg->Groups){
+		#SAVE: files
 		for my $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
 
 			my ($fdest,$ffile,$fmode,$fowner,$fgroup) = split(",", $file);
 			$fdest =~ s/\$home\$\//$main{home}/; ##used to prevent a double slash after home-dir
 			$fdest =~ s/\$home\$/$main{home}/;
 
-			mkpath( "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/",
+			# create the full path
+			mkpath( "$main{path}backup.d/$main{host}/$today/$package/",
 							{ owner => $main{user}, group => $main{group}, mode => oct($main{defperm}) }
 			);
-		
-			copy($fdest, "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$ffile");
-			chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$ffile";
-			chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$ffile";
+
+			# copy, chmod and chown
+			copy($fdest, "$main{path}backup.d/$main{host}/$today/$package/$ffile");
+			chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/$today/$package/$ffile";
+			chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$today/$package/$ffile";
 		}
 
-		# copy the hook files of the repository to.
-		# it is useful if you want to copy your snapshot to your host-directory
-		for my $hook ("pre", "pre_pkg_install", "post_pkg_install", "pre_config_remove", "post_config_remove", "pre_pkg_remove", "post_pkg_remove", "pre_config_install", "post_config_install", "post") {
-			copy($main{path} . $main{host} . "/" . $package . "/" . $hook, "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$hook");
-			chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$hook";
-			chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$mday-$mon-$year/$package/$hook";
+		#SAVE: hooks
+		for my $hook ("pre", "pre_pkg_install", "post_pkg_install", "pre_config_remove",
+									"post_config_remove", "pre_pkg_remove", "post_pkg_remove",
+									"pre_config_install", "post_config_install", "post"){
+			# check if file available -> create path only, if there are hooks
+			if( -f $main{path} . $main{host} . "/" . $package . "/" . $hook){
+
+				# create the full path
+				mkpath( "$main{path}backup.d/$main{host}/$today/$package/",
+								{ owner => $main{user}, group => $main{group}, mode => oct($main{defperm}) }
+				);
+
+				# copy, chmod and chown
+				copy($main{path} . $main{host} . "/" . $package . "/" . $hook,
+						"$main{path}backup.d/$main{host}/$today/$package/$hook");
+				chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/$today/$package/$hook";
+				chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$today/$package/$hook";
+			}
 		}
 	}
 }
+##END BACKUP CONFIG FILES
 ##END DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
 
 #READ PACKAGE CONFIGS
-for my $package (@pkgs){
+for my $package (@pkgs){ #CHECK: Section Exists
 	unless($pkg->SectionExists("$package all")){
-		die "Section [$package all] missing in $main{config_pkg}";
-	}
-	unless($pkg->SectionExists("$package $main{host}")){
-		warn "Section [$package $main{host}] missing in $main{config_pkg}"
-				if($main{verbose});
-	}
-	
-	for my $note ($pkg->val("$package all", "note"), $pkg->val("$package $main{host}", "note")){
-		print "$package: $note\n";
+		die "$package: section [$package all] doesn't exist.\n";
 	}
 
+	#CHECK: Section Exsists for host
+	unless($pkg->SectionExists("$package $main{host}")){
+		warn "$package: section [$package $main{host}] doesn't exist.\n"
+				if($main{verbose});
+	}
+	#PRINT: notes and save them to @notes (will print it at the end again)
+	for my $note ($pkg->val("$package all", "note"), $pkg->val("$package $main{host}", "note")){
+		print "$package: $note\n";
+		push @notes, "$package: $note";
+	}
+
+	#READ: systempackages for distribution
+	my $count = 0;
 	for my $dist ($pkg->val("$package all", "dist"), $pkg->val("$package $main{host}", "dist")){
 		if($dist =~ /^$main{dist}\s*:(.*)/){
 			push @syspkgs, split(" ", $1);
+			$count++;
 		}
 	}
+	warn "$package: No Systempackages are defined for your distribution\n"
+		if($count == 0 && $main{verbose});
 
+	#READ: Dependencies
 	for my $dep ($pkg->val("$package all", "deps"), $pkg->val("$package $main{host}", "deps")){
 		for(split(" ", $dep)){
 			print "ADDED package $_ as dependency from $package\n"
 				if($main{verbose});
+##todo
+			warn "$package: unresolved dependency $_\n"
+				unless($pkg->SectionExists("$_ all"));
 			push @pkgs, $_;
 		}
 	}
 
+	#READ: Every File
 	for my $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
 		my ($fdest,$ffile,$fmode,$fuser,$fgroup) = split(",", $file);
+		my ($fuid, $fgid);
 
 		# replace the strings $home$ $user$ and $group$
 		$fdest =~ s/\$home\$\//$main{home}/; ##used to prevent a double slash after home-dir
 		$fdest =~ s/\$home\$/$main{home}/;
 		$fuser =~ s/\$user\$/$main{user}/;
 		$fgroup =~ s/\$group\$/$main{group}/;
+
 		$ffile = "$main{path}$main{host}/$package/$ffile";
 		$fdest = $main{prefix} . $fdest;
 
 		if($files{$fdest}){
-			warn "Overwriting\n$files{$ffile}\nwith\n$file\n"
+			warn "$package: duplicate definiton of:\n$files{$ffile}\nwith\n$file\n"
 				if($main{verbose});
 		}
 
-		##check if user exists, if yes -> write uid back on $fuser
-		if(defined getpwnam($fuser)){ $fuser = (getpwnam($fuser))[2]; }
-		else { die "The user $fuser does not exist"; }
-		#same as above, just for the group
-		if(defined getgrnam($fgroup)){ $fgroup = (getgrnam($fgroup))[2]; }
-		else { die "The group $fgroup does not exist"; }
+		# check config, if all users are existing, groups too
+		# check if user exists, if yes -> write uid to $fuid
+		if(defined getpwnam($fuser)){
+			$fuid = (getpwnam($fuser))[2];
+		}
+		else {
+			die "$package: The user $fuser does not exist\n";
+		}
+		# same as above, just for the group
+		if(defined getgrnam($fgroup)){
+			$fgid = (getgrnam($fgroup))[2];
+		}
+		else {
+			die "$package: The group $fgroup does not exist\n";
+		}
 
-		$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fgroup));
+		$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fuid, $fgroup, $fgid));
 	}
 }
 
-for my $key (keys %files){
-	print "$files{$key}\n";
-}
-exit(0);
+##todo
+#for my $key (keys %files){
+#	print "$files{$key}\n";
+#}
+#exit(0);
 
 hook("pre");
 
+#MODE: install packages
 if($mode eq "pi"){
 	hook("pre_pkg_install");
 
+	# execute package install command
 	system $main{pkgINS} . join(" ", @syspkgs);
 
+	# catch the error code
 	if($? != 0){
 		warn "The packagemanager returned the error code $?. Continue installing configfiles? [y/N]";
 		unless(<STDIN> =~ /y/i){
@@ -371,6 +460,7 @@ if($mode eq "pi"){
 	hook("post_pkg_install");
 }
 
+#MODE: remove configs (packages)
 if($mode eq "cr" || $mode eq "pr"){
 	hook("pre_config_remove");
 
@@ -395,11 +485,14 @@ if($mode eq "cr" || $mode eq "pr"){
 	hook("post_config_remove");
 }
 	
+#MODE: remove packages
 if($mode eq "pr"){
 	hook("pre_pkg_remove");
 
+	# execute package remove command
 	system $main{pkgREM} . @syspkgs;
 
+	# catch the error code
 	if($? != 0){
 		warn "The packagemanager returned the error code $?. Continue removing configfiles? [y/N]";
 		unless(<STDIN> =~ /y/i){
@@ -410,16 +503,31 @@ if($mode eq "pr"){
 	hook("post_pkg_remove");
 }
 	
+#MODE: install configs (packages)
 if($mode eq "ci" || $mode eq "pi"){
 	hook("pre_config_install");
 	
 	for my $file (values %files){
-		my ($fdest,$ffile,$fmode,$fowner,$fgroup) = split(",", $file);
+		my ($fdest,$ffile,$fmode,$fowner,$fuid,$fgroup,$fgid) = split(",", $file);
+
+		##todo
+		# check if $fmode permissions are executable
+		#
+		if($fmode =~ /^(0|2|4|6)/){
+			mkpath(dirname($fdest), 
+				{ owner => $fowner, group => $fgroup, mode => oct($fmode + 100) }
+			);
+		}
+		else {
+			mkpath(dirname($fdest), 
+				{ owner => $fowner, group => $fgroup, mode => oct($fmode) }
+			);
+		}
 
 		copy($ffile, $fdest)
 			or warn "Could not copy the file to $fdest";
 		chmod oct($fmode), $fdest;
-		chown $fowner, $fgroup, $fdest;
+		chown $fuid, $fgid, $fdest;
 	}
 	
 	hook("post_config_install");
