@@ -1,0 +1,4 @@
+- add manual for --help flag
+- decide about ##todo in script
+- create/finish howto
+- test all parts
