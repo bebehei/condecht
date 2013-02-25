@@ -17,23 +17,25 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#   You'll find the GPL in the file with the name LICENSE.
+#   You'll find the GNU General Public License in the file
+#   with the name LICENSE.
 #
 
-##LOAD MODULES
+##LOAD MODULES ##
 use warnings;
 use strict;
+# extra modules
 use lib "./lib";
 use Config::IniFiles;
-##standard modules
+# standard modules
 use Getopt::Long;
 use Pod::Usage;
 use File::Path;
 use File::Copy;
 use File::Basename;
-##END LOAD MODULES
+##END LOAD MODULES ##
 
-##DECLARE EMPTY VARIABLES
+##DECLARE EMPTY VARIABLES ##
 my $mode;    #decide, whether install/remove config/package
 my @syspkgs; #packages for the system packagemanager
 my @pkgs;    #packages of condecht to install
@@ -41,14 +43,14 @@ my %main;    #the information of the main-section in $config_main
 my %files;   #all values of the parameter file at the depending
              #sections to all @pkgs
 my @notes;   #saves all notes, to print them at the end again
-##DECLARE EMPTY VARIABLES
+##END DECLARE EMPTY VARIABLES ##
 
-## DEFAULT VARIABLES
+##DEFAULT VARIABLES ##
 my $config_main = "/etc/condecht";
 my $config_pkg = "packages.conf";
-##END DEFAULT VARIABLES
+##END DEFAULT VARIABLES ##
 
-##HOOK-Functions
+##FUNCTIONS ##
 sub hook {
 	for my $package (@pkgs){
 		if(-x $main{path} . $main{host} . "/" . $package . "/" . $_[0]){
@@ -56,17 +58,17 @@ sub hook {
 			if($? != 0){
 				warn "The hook $_[0] of $package reported the error-code $?. Do you want to continue? [y/N]";
 				unless(<STDIN> =~ /y/i){
-					die "Stopped while installing the packages. You may have to fix some errors.";
+					die "Stopped while installing the packages. You may have to fix some errors.\n";
 				}
 			}
 		}
 	}
 }
-##END USED FUNCTIONS
+##END FUNCTIONS ##
 
 ##READ COMMAND LINE PARAMETERS ##
 GetOptions(
-	##general options
+	# general options
 	"c|config=s"	=> \$config_main,
 	"h|host=s"		=> \$main{host},
 	"d|dir=s"			=> \$main{home},
@@ -76,61 +78,67 @@ GetOptions(
 	"debug"				=> \$main{debug},
 	"p|prefix=s"	=> \$main{prefix},
 	"opt=s%"			=> \%main,
-	"check"				=> sub { if(!$mode){ $mode = "cc"; } else { exit(1); }},
 	"help"				=> sub { pod2usage(1) },
-	##install/remove configs/packages
+	# install/remove configs/packages
 	"pi=s{,}"			=> sub { if(!$mode or ($mode eq "pi")){ $mode = "pi"; shift(@_); push @pkgs, @_; } else { exit(1); }},
 	"pr=s{,}"			=> sub { if(!$mode or ($mode eq "pr")){ $mode = "pr"; shift(@_); push @pkgs, @_; } else { exit(1); }},
 	"ci=s{,}"			=> sub { if(!$mode or ($mode eq "ci")){ $mode = "ci"; shift(@_); push @pkgs, @_; } else { exit(1); }},
 	"cr=s{,}"			=> sub { if(!$mode or ($mode eq "cr")){ $mode = "cr"; shift(@_); push @pkgs, @_; } else { exit(1); }},
-	##list packages
+	# list packages
 	"lp"					=> sub { if(!$mode){ $mode = "lp"; } else { exit(1); }},
-	##backup
+	# backup
 	"b|backup"		=> sub { if(!$mode){ $mode = "ba"; } else { exit(1); }},
+	# check config
+	"check"				=> sub { if(!$mode){ $mode = "cc"; } else { exit(1); }},
 );
-##CHECK PARAMETERS
+##CHECK PARAMETERS ##
 if(!$mode){
-	die "no mode specified!";
+	die "No mode specified!\n";
 }
 if($main{debug}){
-	warn "option debug is not in use yet";
+	warn "The option debug is not in use yet!\n";
 }
 if(!$main{prefix}){
 	$main{prefix} = "";
 }
-##END CHECK PARAMETERS
+##END CHECK PARAMETERS ##
+##END READ COMMAND LINE PARAMETERS ##
 
-##READ MAIN CONFIG ##
+##INIT CONFIG_MAIN ##
 my $cfg = Config::IniFiles->new(-file => $config_main, -nocase => 1) or die "@Config::IniFiles::errors";
+##END INIT MAIN CONFIG ##
+
+##READ CONFIG_MAIN ##
 if($cfg->SectionExists("main")){
 	for(("path", "backup", "host", "dist", "pkgINS", "pkgREM", "user", "group", "home", "defperm")){
 		if(defined $cfg->val("main", $_)){
-			##the value of the config file will be written into the $main{$_}
-			## only if it is not defined over commandline already
+			# the value of the config file will be written into the $main{$_}
+			# only if it is not defined over commandline already
 			if(!$main{$_}){
 				$main{$_} = $cfg->val("main", $_);
 			}
 		}
 		else {
-			die "Couldn't find definition of $_ in config-file $config_main";
+			die "Couldn't find definition of $_ in config-file $config_main\n";
 		}
 	}
 }
 else {
-	die "No Section main defined in config-file $config_main";
+	die "No Section main defined in config-file $config_main\n";
 }
-undef $cfg;
+##END READ CONFIG_MAIN ##
 
-#CHECK values of main config
+##CHECK CONFIG_MAIN ##
 
-#add trailing space to execute systemcommand right
+#CHECK: values of main config
+# add trailing space to execute systemcommand in an appropriate way
 $main{pkgINS} = $main{pkgINS} . " "
 	if($main{pkgINS} =~ / $/);
 $main{pkgREM} = $main{pkgREM} . " "
 	if($main{pkgREM} =~ / $/);
 
-# check config, if user and group exists
-# if true -> write it into $main{uid/gid}
+#CHECK: user and group existence
+#  -> if exists write into $main{uid/gid}
 if(defined getpwnam($main{user})){
 	$main{uid} = (getpwnam($main{user}))[2];
 }
@@ -144,55 +152,54 @@ else {
 	die "MAIN: The group $main{group} does not exist!\n";
 }
 
-# add trailing slash
+#CHECK: absolute path and trailing shlash of home and path
 unless($main{path} =~ /\/$/){
 	$main{path} = $main{path} . "/";
 }
 unless($main{path} =~ /^\//){
 	die "CONFIG: definition of path is no absolute path in $config_main\n";
 }
-# add trailing slash
 unless($main{home} =~ /\/$/){
 	$main{home} = $main{home} . "/";
 }
 unless($main{home} =~ /^\//){
-	die "MAIN: definition of home is no absolute path in $config_main\n";
+	die "CONFIG: definition of home is no absolute path in $config_main\n";
 }
 
-# CHECK: defperm
+#CHECK: defperm
 if(length($main{defperm}) == 3){
 	$main{defperm} = "0$main{defperm}";
 }
 else {
-	die "MAIN: permissions in defperm are not valid";
+	die "MAIN: permissions in defperm are not valid\n";
 }
 for my $char (split(//, $main{defperm})){
-	die "MAIN: permissions in defperm are not valid"
+	die "MAIN: permissions in defperm are not valid\n"
 		if(!(0 <= $char && $char <= 7));
 }
 
 # set path of packages.conf file
 $main{config_pkg} = $main{path} . $config_pkg;
+##END CHECK CONFIG_MAIN ##
 
-##END READ MAIN CONFIG
-
-
-##INIT PACKAGES-CONFIG
+##INIT PACKAGES-CONFIG ##
 my $pkg = Config::IniFiles->new(-file => $main{config_pkg}, -nocase => 1) or die "@Config::IniFiles::errors";
-##END INIT PACKAGES CONFIG
+##END INIT PACKAGES CONFIG ##
 
 ##DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
+# list packages
 if($mode eq "lp"){
 	for my $package ($pkg->Groups){
 		print "$package\n";
 	}
 	exit(0);
 }
-#check config
+
+##CHECK CONFIG_PKG ##
 if($mode eq "cc"){
 	print "packages.conf location: $main{config_pkg}\n";
 
-	#$pkg->Groups: use all packages to check whole config
+	# $pkg->Groups: use all packages to check whole config
 	for my $package ($pkg->Groups){
 		#CHECK: Section Exists
 		unless($pkg->SectionExists("$package all")){
@@ -297,9 +304,9 @@ if($mode eq "cc"){
 	}
 	print "Registered system-packages:\n@syspkgs\n";
 }
-#END CHECK CONFIG
+##END CHECK CONFIG_PKG ##
 
-##BEGIN BACKUP CONFIG FILES
+##BACKUP ##
 if($mode eq "ba"){
 	# get date of $today
 	my ($mday,$mon,$year) = (localtime(time))[3,4,5];
@@ -317,7 +324,7 @@ if($mode eq "ba"){
 		for my $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
 
 			my ($fdest,$ffile,$fmode,$fowner,$fgroup) = split(",", $file);
-			$fdest =~ s/\$home\$\//$main{home}/; ##used to prevent a double slash after home-dir
+			$fdest =~ s/\$home\$\//$main{home}/; # used to prevent a double slash after home-dir
 			$fdest =~ s/\$home\$/$main{home}/;
 
 			# create the full path
@@ -352,10 +359,10 @@ if($mode eq "ba"){
 		}
 	}
 }
-##END BACKUP CONFIG FILES
+##END BACKUP ##
 ##END DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
 
-#READ PACKAGE CONFIGS
+##READ CONFIG_PKG ##
 for my $package (@pkgs){ #CHECK: Section Exists
 	unless($pkg->SectionExists("$package all")){
 		die "$package: section [$package all] doesn't exist.\n";
@@ -401,7 +408,7 @@ for my $package (@pkgs){ #CHECK: Section Exists
 		my ($fuid, $fgid);
 
 		# replace the strings $home$ $user$ and $group$
-		$fdest =~ s/\$home\$\//$main{home}/; ##used to prevent a double slash after home-dir
+		$fdest =~ s/\$home\$\//$main{home}/; # used to prevent a double slash after home-dir
 		$fdest =~ s/\$home\$/$main{home}/;
 		$fuser =~ s/\$user\$/$main{user}/;
 		$fgroup =~ s/\$group\$/$main{group}/;
@@ -433,12 +440,7 @@ for my $package (@pkgs){ #CHECK: Section Exists
 		$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fuid, $fgroup, $fgid));
 	}
 }
-
-##todo
-#for my $key (keys %files){
-#	print "$files{$key}\n";
-#}
-#exit(0);
+##END READ CONFIG_PKG ##
 
 hook("pre");
 
@@ -453,7 +455,7 @@ if($mode eq "pi"){
 	if($? != 0){
 		warn "The packagemanager returned the error code $?. Continue installing configfiles? [y/N]";
 		unless(<STDIN> =~ /y/i){
-			die "Stopped while installing the packages. You may have to fix some errors.";
+			die "Stopped while installing the packages. You may have to fix some errors.\n";
 		}
 	}
 
@@ -474,12 +476,12 @@ if($mode eq "cr" || $mode eq "pr"){
 			$fdest2 =~ s/\.//g;
 			
 			copy($fdest, "$main{path}backup.d/$main{host}/old/$fdest2")
-				or warn "Could not backup file $fdest";
+				or warn "Could not backup file $fdest\n";
 			chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/old/$fdest2";
 			chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$fdest2";
 		}
 		unlink($fdest)
-			or warn "Could not remove file $fdest";
+			or warn "Could not remove file $fdest\n";
 	}
 	
 	hook("post_config_remove");
@@ -496,7 +498,7 @@ if($mode eq "pr"){
 	if($? != 0){
 		warn "The packagemanager returned the error code $?. Continue removing configfiles? [y/N]";
 		unless(<STDIN> =~ /y/i){
-			die "Stopped while removing the packages. You may have to fix some errors.";
+			die "Stopped while removing the packages. You may have to fix some errors.\n";
 		}
 	}
 	
@@ -525,7 +527,7 @@ if($mode eq "ci" || $mode eq "pi"){
 		}
 
 		copy($ffile, $fdest)
-			or warn "Could not copy the file to $fdest";
+			or warn "Could not copy the file to $fdest\n";
 		chmod oct($fmode), $fdest;
 		chown $fuid, $fgid, $fdest;
 	}
@@ -540,7 +542,10 @@ exit(0);
 __END__
 =head1 NAME
 
-Conf
+Condecht
+
+=head2 Condecht
+Condecht is a config-file distribution software.
 
 =head1 SYNOPSIS
 

@@ -1,0 +1,2 @@
+#grep all warn and die messages
+grep  --perl-regexp "(warn|die)" condecht | tr -d "\t" | grep -v "^#"
