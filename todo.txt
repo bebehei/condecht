@@ -2,3 +2,48 @@
 - decide about ##todo in script
 - create/finish howto
 - test all parts
+- instead of putting @syspkgs putting at the end -> create placeholder like %p
+- add prefix to cc and ba modes
+
+## ADD lp with tree dependencies
+if($mode == "lp"){
+	#storeformat:
+	#/package/
+	#/package/dependency/
+	#/package/dependency/dependency of dependency/
+	# the last slash is necessary
+	my @dependencies;
+
+	# not sure if obsolete:
+	if(@dependencies =~ /\/$pkg\/(.*)\/$dep\//){
+		next;
+	}
+}
+
+## ADD custom install commands:
+/etc/condecht:
+[main]
+dists = aur,arch,perl
+
+pkgREM_perl = cpan -r
+pkgINS_perl = cpan -i
+pkgREM_aur = yaourt -S
+pkgINS_aur = yaourt -R
+pkgREM_arch = pacman -S
+pkgINS_arch = pacman -R
+... and so on
+
+$main{path}packages.conf:
+dist = aur:@aur-packages
+dist = arch:@arch-system-pkgs
+dist = deb:@deb-system-pkgs
+dist = perl:@perl-pkgs
+
+  # What to change:
+	create hashes with array reference
+	%syspkgs
+
+	read all packages to install out with
+	for $syspkg (keys %syspkgs){
+	 	system $main{pkgREM_$syspkg} . join(" ", ${syspkgs{$syspkg}});
+	}
