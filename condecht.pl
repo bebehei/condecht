@@ -398,7 +398,8 @@ for my $package (@pkgs){ #CHECK: Section Exists
 ##todo
 			warn "$package: unresolved dependency $_\n"
 				unless($pkg->SectionExists("$_ all"));
-			push @pkgs, $_;
+			push @pkgs, $_
+				unless(@pkgs =~ /^$_$/);
 		}
 	}
 
