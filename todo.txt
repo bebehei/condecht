@@ -49,3 +49,10 @@ dist = perl:@perl-pkgs
 	for $syspkg (keys %syspkgs){
 	 	system $main{pkgREM_$syspkg} . join(" ", ${syspkgs{$syspkg}});
 	}
+
+#add support for the right exit code
+s/
+		warn "The packagemanager returned the error code $?. Continue installing configfiles? [y/N]";
+/	
+		printf STDERR "The packagemanager returned the error code %d. Continue installing configfiles? [y/N]", $? >> 8;
+/
