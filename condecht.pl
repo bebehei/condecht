@@ -133,9 +133,9 @@ else {
 #CHECK: values of main config
 # add trailing space to execute systemcommand in an appropriate way
 $main{pkgINS} = $main{pkgINS} . " "
-	if($main{pkgINS} =~ / $/);
+	unless($main{pkgINS} =~ / $/);
 $main{pkgREM} = $main{pkgREM} . " "
-	if($main{pkgREM} =~ / $/);
+	unless($main{pkgREM} =~ / $/);
 
 #CHECK: user and group existence
 #  -> if exists write into $main{uid/gid}
