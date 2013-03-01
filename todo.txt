@@ -2,6 +2,7 @@
 - decide about ##todo in script
 - create/finish howto
 - test all parts
+- when adding dependencies to @packages there is no check, if 
 - instead of putting @syspkgs putting at the end -> create placeholder like %p
 - add prefix to cc and ba modes
 
