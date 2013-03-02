@@ -48,6 +48,10 @@ my @notes;   #saves all notes, to print them at the end again
 ##DEFAULT VARIABLES ##
 my $config_main = "/etc/condecht";
 my $config_pkg = "packages.conf";
+my @hooks = (	"pre", "pre_pkg_install", "post_pkg_install",
+							"pre_config_remove", "post_config_remove",
+							"pre_pkg_remove", "post_pkg_remove",
+							"pre_config_install", "post_config_install", "post");
 ##END DEFAULT VARIABLES ##
 
 ##FUNCTIONS ##
@@ -56,7 +60,8 @@ sub hook {
 		if(-x $main{path} . $main{host} . "/" . $package . "/" . $_[0]){
 			system $main{path} . $main{host} . "/" . $package . "/" . $_[0];
 			if($? != 0){
-				warn "The hook $_[0] of $package reported the error-code $?. Do you want to continue? [y/N]";
+				printf STDERR "The hook $_[0] of $package returned the error code %d.", $? >> 8;
+				printf STDERR "Do you want to contiunue? [y/N]";
 				unless(<STDIN> =~ /y/i){
 					die "Stopped while installing the packages. You may have to fix some errors.\n";
 				}
@@ -99,18 +104,30 @@ if($main{debug}){
 	warn "The option debug is not in use yet!\n";
 }
 if(!$main{prefix}){
+	# define prefix as empty -> no error for uninitialized value
 	$main{prefix} = "";
 }
+else {
+	unless($main{prefix} =~ /^\//){
+		die "OPTION: prefix is no absolute path!\n";
+	}
+	# delete last slash of prefix to prevent double-slash
+	# after joining with $fdest, which has got leading slash
+	$main{prefix} =~ s/\/$//;
+}
+
 ##END CHECK PARAMETERS ##
 ##END READ COMMAND LINE PARAMETERS ##
 
 ##INIT CONFIG_MAIN ##
-my $cfg = Config::IniFiles->new(-file => $config_main, -nocase => 1) or die "@Config::IniFiles::errors";
+my $cfg = Config::IniFiles->new(-file => $config_main, -nocase => 1)
+	or die "@Config::IniFiles::errors";
 ##END INIT MAIN CONFIG ##
 
 ##READ CONFIG_MAIN ##
 if($cfg->SectionExists("main")){
-	for(("path", "backup", "host", "dist", "pkgINS", "pkgREM", "user", "group", "home", "defperm")){
+	for((	"path", "backup", "host", "dist", "pkgINS",
+				"pkgREM", "user", "group", "home", "defperm")){
 		if(defined $cfg->val("main", $_)){
 			# the value of the config file will be written into the $main{$_}
 			# only if it is not defined over commandline already
@@ -183,7 +200,8 @@ $main{config_pkg} = $main{path} . $config_pkg;
 ##END CHECK CONFIG_MAIN ##
 
 ##INIT PACKAGES-CONFIG ##
-my $pkg = Config::IniFiles->new(-file => $main{config_pkg}, -nocase => 1) or die "@Config::IniFiles::errors";
+my $pkg = Config::IniFiles->new(-file => $main{config_pkg}, -nocase => 1)
+	or die "@Config::IniFiles::errors";
 ##END INIT PACKAGES CONFIG ##
 
 ##DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
@@ -192,6 +210,7 @@ if($mode eq "lp"){
 	for my $package ($pkg->Groups){
 		print "$package\n";
 	}
+##todo
 	exit(0);
 }
 
@@ -204,7 +223,9 @@ if($mode eq "cc"){
 		#CHECK: Section Exists
 		unless($pkg->SectionExists("$package all")){
 			warn "$package: section [$package all] does not exist\n";
-			continue;
+##todo
+			next;
+#continue;
 		}
 
 		#CHECK: Section Exsists for host
@@ -339,9 +360,7 @@ if($mode eq "ba"){
 		}
 
 		#SAVE: hooks
-		for my $hook ("pre", "pre_pkg_install", "post_pkg_install", "pre_config_remove",
-									"post_config_remove", "pre_pkg_remove", "post_pkg_remove",
-									"pre_config_install", "post_config_install", "post"){
+		for my $hook (@hooks){
 			# check if file available -> create path only, if there are hooks
 			if( -f $main{path} . $main{host} . "/" . $package . "/" . $hook){
 
@@ -363,7 +382,8 @@ if($mode eq "ba"){
 ##END DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
 
 ##READ CONFIG_PKG ##
-for my $package (@pkgs){ #CHECK: Section Exists
+for my $package (@pkgs){
+	#CHECK: Section Exists
 	unless($pkg->SectionExists("$package all")){
 		die "$package: section [$package all] doesn't exist.\n";
 	}
@@ -454,7 +474,7 @@ if($mode eq "pi"){
 
 	# catch the error code
 	if($? != 0){
-		warn "The packagemanager returned the error code $?. Continue installing configfiles? [y/N]";
+		printf STDERR "The packagemanager returned the error code %d. Continue installing configfiles? [y/N]", $? >> 8;
 		unless(<STDIN> =~ /y/i){
 			die "Stopped while installing the packages. You may have to fix some errors.\n";
 		}
@@ -497,7 +517,7 @@ if($mode eq "pr"){
 
 	# catch the error code
 	if($? != 0){
-		warn "The packagemanager returned the error code $?. Continue removing configfiles? [y/N]";
+		printf STDERR "The packagemanager returned the error code %d. Continue removing configfiles? [y/N]", $? >> 8;
 		unless(<STDIN> =~ /y/i){
 			die "Stopped while removing the packages. You may have to fix some errors.\n";
 		}
