@@ -27,6 +27,7 @@ use strict;
 # extra modules
 use lib "./lib";
 use Config::IniFiles;
+use List::MoreUtils qw(any);
 # standard modules
 use Getopt::Long;
 use Pod::Usage;
@@ -57,17 +58,44 @@ my @hooks = (	"pre", "pre_pkg_install", "post_pkg_install",
 ##FUNCTIONS ##
 sub hook {
 	for my $package (@pkgs){
-		if(-x $main{path} . $main{host} . "/" . $package . "/" . $_[0]){
-			system $main{path} . $main{host} . "/" . $package . "/" . $_[0];
+		if(-x "$main{path}$main{host}/$package/$_[0]"){
+			system "$main{path}$main{host}/$package/$_[0]";
 			if($? != 0){
-				printf STDERR "The hook $_[0] of $package returned the error code %d.", $? >> 8;
-				printf STDERR "Do you want to contiunue? [y/N]";
+				printf STDERR "The hook $_[0] of $package " .
+											"returned the error code %d." .
+											"Do you want to contiunue? [y/N]", $? >> 8;
 				unless(<STDIN> =~ /y/i){
-					die "Stopped while installing the packages. You may have to fix some errors.\n";
+					die "Stopped while installing the packages. " .
+							"You may have to fix some errors.\n";
 				}
 			}
 		}
 	}
+}
+
+sub fcp {
+	my ($ffile,$fdest,$fmode,$fuid,$fgid) = @_;
+	my $fowner = getpwuid($fuid);
+	my $fgroup = getgrgid($fgid);
+##todo
+#think about verbose option of mkpath
+#think about error option of mkpath
+	mkpath(dirname($fdest), 
+				{	owner => $fowner,
+					group => $fgroup,
+					mode => oct($main{perm_d})
+				})
+		or warn "PATH: Could not create path " . dirname($fdest) . ": $!\n";
+
+	#copy file $ffile, $fdest
+	copy($ffile, $fdest)
+		or warn "COPY: $ffile $!";
+	#chmod file $fmode, $fdest
+	chmod oct($fmode), $fdest
+		or warn "CHMOD: failed at $fdest $!";
+	#chown file $fuid, $fgid, $fdest
+	chown $fuid, $fgid, $fdest
+		or warn "CHOWN: failed at $fdest $!";
 }
 ##END FUNCTIONS ##
 
@@ -85,17 +113,36 @@ GetOptions(
 	"opt=s%"			=> \%main,
 	"help"				=> sub { pod2usage(1) },
 	# install/remove configs/packages
-	"pi=s{,}"			=> sub { if(!$mode or ($mode eq "pi")){ $mode = "pi"; shift(@_); push @pkgs, @_; } else { exit(1); }},
-	"pr=s{,}"			=> sub { if(!$mode or ($mode eq "pr")){ $mode = "pr"; shift(@_); push @pkgs, @_; } else { exit(1); }},
-	"ci=s{,}"			=> sub { if(!$mode or ($mode eq "ci")){ $mode = "ci"; shift(@_); push @pkgs, @_; } else { exit(1); }},
-	"cr=s{,}"			=> sub { if(!$mode or ($mode eq "cr")){ $mode = "cr"; shift(@_); push @pkgs, @_; } else { exit(1); }},
+	"pi=s{,}"			=> sub	{	if(!$mode or ($mode eq "pi"))
+														{ $mode = "pi"; shift(@_); push @pkgs, @_; }
+													else { exit(1); }
+												},
+	"pr=s{,}"			=> sub	{	if(!$mode or ($mode eq "pr"))
+														{ $mode = "pr"; shift(@_); push @pkgs, @_; }
+													else { exit(1); }
+												},
+	"ci=s{,}"			=> sub	{	if(!$mode or ($mode eq "ci"))
+														{ $mode = "ci"; shift(@_); push @pkgs, @_; }
+													else { exit(1); }
+												},
+	"cr=s{,}"			=> sub	{	if(!$mode or ($mode eq "cr"))
+														{ $mode = "cr"; shift(@_); push @pkgs, @_; }
+													else { exit(1); }
+												},
 	# list packages
-	"lp"					=> sub { if(!$mode){ $mode = "lp"; } else { exit(1); }},
+	"lp"					=> sub	{	if(!$mode or ($mode eq "lp")){ $mode = "lp"; }
+													else { exit(1); }
+												},
 	# backup
-	"b|backup"		=> sub { if(!$mode){ $mode = "ba"; } else { exit(1); }},
+	"b|backup"		=> sub	{	if(!$mode or ($mode eq "ba")){ $mode = "ba"; }
+													else { exit(1); }
+												},
 	# check config
-	"check"				=> sub { if(!$mode){ $mode = "cc"; } else { exit(1); }},
+	"check"				=> sub	{	if(!$mode or ($mode eq "cc")){ $mode = "cc"; }
+													else { exit(1); }
+												},
 );
+
 ##CHECK PARAMETERS ##
 if(!$mode){
 	die "No mode specified!\n";
@@ -234,13 +281,15 @@ if($mode eq "cc"){
 		}
 
 		#PRINT: Every note of Sections
-		for my $note ($pkg->val("$package all", "note"), $pkg->val("$package $main{host}", "note")){
+		for my $note ($pkg->val("$package all", "note"),
+									$pkg->val("$package $main{host}", "note")){
 			print "$package: note: $note\n";
 		}
 		
 		#CHECK: System packages
 		my $count = 0;
-		for my $dist ($pkg->val("$package all", "dist"), $pkg->val("$package $main{host}", "dist")){
+		for my $dist ($pkg->val("$package all", "dist"),
+									$pkg->val("$package $main{host}", "dist")){
 			if($dist =~ /^$main{dist}\s*:(.*)/){
 				push @syspkgs, split(" ", $1);
 				$count++;
@@ -250,7 +299,8 @@ if($mode eq "cc"){
 			if($count == 0);
 	
 		#CHECK: Dependencies
-		for my $dep ($pkg->val("$package all", "deps"), $pkg->val("$package $main{host}", "deps")){
+		for my $dep (	$pkg->val("$package all", "deps"),
+									$pkg->val("$package $main{host}", "deps")){
 			for(split(" ", $dep)){
 				warn "$package: unresolved dependency $_\n"
 					unless($pkg->SectionExists("$_ all"));
@@ -258,12 +308,14 @@ if($mode eq "cc"){
 		}
 
 		#CHECK: Every File
-		for my $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
+		for my $file ($pkg->val("$package all", "file"),
+									$pkg->val("$package $main{host}", "file")){
 			my ($fdest,$ffile,$fmode,$fuser,$fgroup) = split(",", $file);
 			my ($fuid, $fgid);
 
 			# replace the strings $home$ $user$ and $group$
-			$fdest =~ s/\$home\$\//$main{home}/; # used to prevent a double slash after home-dir
+			# used to prevent a double slash after home-dir
+			$fdest =~ s/\$home\$\//$main{home}/; 
 			$fdest =~ s/\$home\$/$main{home}/;
 			$fuser =~ s/\$user\$/$main{user}/;
 			$fgroup =~ s/\$group\$/$main{group}/;
@@ -291,7 +343,8 @@ if($mode eq "cc"){
 				warn "$package: The group $fgroup does not exist\n";
 			}
 
-			$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fuid, $fgroup, $fgid));
+			$files{$fdest} = join(",", ($fdest, $ffile, $fmode,
+																	$fuser, $fuid, $fgroup, $fgid));
 			
 			#check the file-existence
 			# check for installed files
@@ -309,9 +362,11 @@ if($mode eq "cc"){
 				my $efowner = getpwuid($efuid);
 
 				#warn if uid and gid are not the same as defined in packages.conf
-				warn "$package: FILE: File $fdest has user $efowner($efuid) instead of $fuser($fuid)\n"
+				warn "$package: FILE: File $fdest has user " .
+						 "$efowner($efuid) instead of $fuser($fuid)\n"
 					if($fuid != $efuid);
-				warn "$package: FILE: File $fdest has group $efgroup($efuid) instead of $fgroup($fgid)\n"
+				warn "$package: FILE: File $fdest has group " .
+						 "$efgroup($efuid) instead of $fgroup($fgid)\n"
 					if($fgid != $efgid);
 			}
 			else {
@@ -336,27 +391,31 @@ if($mode eq "ba"){
 	my $today = "$mday-$mon-$year";
 
 	#SAVE: $config_main
-	copy($config_main, "$main{path}backup.d/$main{host}/$today/condecht");
-	chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/$today/condecht";
-	chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$today/condecht";
+	fcp($config_main,
+			"$main{path}backup.d/$main{host}/$today/condecht",
+			$main{defperm},
+			$main{uid},
+			$main{gid}, )
+		or warn "Could not copy $config_main: $!";
 
 	for my $package ($pkg->Groups){
 		#SAVE: files
-		for my $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
+		for my $file ($pkg->val("$package all", "file"),
+									$pkg->val("$package $main{host}", "file")){
 
 			my ($fdest,$ffile,$fmode,$fowner,$fgroup) = split(",", $file);
-			$fdest =~ s/\$home\$\//$main{home}/; # used to prevent a double slash after home-dir
+			# used to prevent a double slash after home-dir
+			$fdest =~ s/\$home\$\//$main{home}/; 
 			$fdest =~ s/\$home\$/$main{home}/;
 
-			# create the full path
-			mkpath( "$main{path}backup.d/$main{host}/$today/$package/",
-							{ owner => $main{user}, group => $main{group}, mode => oct($main{defperm}) }
-			);
-
 			# copy, chmod and chown
-			copy($fdest, "$main{path}backup.d/$main{host}/$today/$package/$ffile");
-			chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/$today/$package/$ffile";
-			chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$today/$package/$ffile";
+			fcp($fdest,
+					"$main{path}backup.d/$main{host}/$today/$package/$ffile",
+					$main{defperm},
+					$main{uid},
+					$main{gid})
+##todo
+				or warn "failed";
 		}
 
 		#SAVE: hooks
@@ -364,16 +423,14 @@ if($mode eq "ba"){
 			# check if file available -> create path only, if there are hooks
 			if( -f $main{path} . $main{host} . "/" . $package . "/" . $hook){
 
-				# create the full path
-				mkpath( "$main{path}backup.d/$main{host}/$today/$package/",
-								{ owner => $main{user}, group => $main{group}, mode => oct($main{defperm}) }
-				);
-
 				# copy, chmod and chown
-				copy($main{path} . $main{host} . "/" . $package . "/" . $hook,
-						"$main{path}backup.d/$main{host}/$today/$package/$hook");
-				chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/$today/$package/$hook";
-				chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$today/$package/$hook";
+				fcp("$main{path}$main{host}/$package/$hook",
+						"$main{path}backup.d/$main{host}/$today/$package/$hook",
+						$main{defperm},
+						$main{uid},
+						$main{gid})
+					or warn "could not fcp test $!";
+
 			}
 		}
 	}
@@ -394,14 +451,16 @@ for my $package (@pkgs){
 				if($main{verbose});
 	}
 	#PRINT: notes and save them to @notes (will print it at the end again)
-	for my $note ($pkg->val("$package all", "note"), $pkg->val("$package $main{host}", "note")){
+	for my $note ($pkg->val("$package all", "note"),
+								$pkg->val("$package $main{host}", "note")){
 		print "$package: $note\n";
 		push @notes, "$package: $note";
 	}
 
 	#READ: systempackages for distribution
 	my $count = 0;
-	for my $dist ($pkg->val("$package all", "dist"), $pkg->val("$package $main{host}", "dist")){
+	for my $dist ($pkg->val("$package all", "dist"),
+								$pkg->val("$package $main{host}", "dist")){
 		if($dist =~ /^$main{dist}\s*:(.*)/){
 			push @syspkgs, split(" ", $1);
 			$count++;
@@ -411,7 +470,8 @@ for my $package (@pkgs){
 		if($count == 0 && $main{verbose});
 
 	#READ: Dependencies
-	for my $dep ($pkg->val("$package all", "deps"), $pkg->val("$package $main{host}", "deps")){
+	for my $dep (	$pkg->val("$package all", "deps"),
+								$pkg->val("$package $main{host}", "deps")){
 		for(split(" ", $dep)){
 			print "ADDED package $_ as dependency from $package\n"
 				if($main{verbose});
@@ -419,17 +479,19 @@ for my $package (@pkgs){
 			warn "$package: unresolved dependency $_\n"
 				unless($pkg->SectionExists("$_ all"));
 			push @pkgs, $_
-				unless(@pkgs =~ /^$_$/);
+				unless( any { /^$_$/ } @pkgs);
 		}
 	}
 
 	#READ: Every File
-	for my $file ($pkg->val("$package all", "file"), $pkg->val("$package $main{host}", "file")){
+	for my $file ($pkg->val("$package all", "file"),
+								$pkg->val("$package $main{host}", "file")){
 		my ($fdest,$ffile,$fmode,$fuser,$fgroup) = split(",", $file);
 		my ($fuid, $fgid);
 
 		# replace the strings $home$ $user$ and $group$
-		$fdest =~ s/\$home\$\//$main{home}/; # used to prevent a double slash after home-dir
+ 		# used to prevent a double slash after home-dir
+		$fdest =~ s/\$home\$\//$main{home}/;
 		$fdest =~ s/\$home\$/$main{home}/;
 		$fuser =~ s/\$user\$/$main{user}/;
 		$fgroup =~ s/\$group\$/$main{group}/;
@@ -458,7 +520,8 @@ for my $package (@pkgs){
 			die "$package: The group $fgroup does not exist\n";
 		}
 
-		$files{$fdest} = join(",", ($fdest, $ffile, $fmode, $fuser, $fuid, $fgroup, $fgid));
+		$files{$fdest} = join(",", ($fdest, $ffile, $fmode,
+																$fuser, $fuid, $fgroup, $fgid));
 	}
 }
 ##END READ CONFIG_PKG ##
@@ -474,9 +537,11 @@ if($mode eq "pi"){
 
 	# catch the error code
 	if($? != 0){
-		printf STDERR "The packagemanager returned the error code %d. Continue installing configfiles? [y/N]", $? >> 8;
+		printf STDERR "The packagemanager returned the error code %d. " .
+									"Continue installing configfiles? [y/N]", $? >> 8;
 		unless(<STDIN> =~ /y/i){
-			die "Stopped while installing the packages. You may have to fix some errors.\n";
+			die "Stopped while installing the packages. " .
+					"You may have to fix some errors.\n";
 		}
 	}
 
@@ -495,11 +560,14 @@ if($mode eq "cr" || $mode eq "pr"){
 			$fdest2 =~ s/^\///;
 			$fdest2 =~ s/\//-/g;
 			$fdest2 =~ s/\.//g;
-			
-			copy($fdest, "$main{path}backup.d/$main{host}/old/$fdest2")
+
+			fcp($fdest,
+					"$main{path}backup.d/$main{host}/old/$fdest2",
+					$main{defperm},
+					$main{uid},
+					$main{gid}, )
 				or warn "Could not backup file $fdest\n";
-			chmod oct($main{defperm}), "$main{path}backup.d/$main{host}/old/$fdest2";
-			chown $main{uid}, $main{gid}, "$main{path}backup.d/$main{host}/$fdest2";
+
 		}
 		unlink($fdest)
 			or warn "Could not remove file $fdest\n";
@@ -517,9 +585,11 @@ if($mode eq "pr"){
 
 	# catch the error code
 	if($? != 0){
-		printf STDERR "The packagemanager returned the error code %d. Continue removing configfiles? [y/N]", $? >> 8;
+		printf STDERR "The packagemanager returned the error code %d. " .
+									"Continue removing configfiles? [y/N]", $? >> 8;
 		unless(<STDIN> =~ /y/i){
-			die "Stopped while removing the packages. You may have to fix some errors.\n";
+			die "Stopped while removing the packages. " .
+					"You may have to fix some errors.\n";
 		}
 	}
 	
@@ -535,7 +605,6 @@ if($mode eq "ci" || $mode eq "pi"){
 
 		##todo
 		# check if $fmode permissions are executable
-		#
 		if($fmode =~ /^(0|2|4|6)/){
 			mkpath(dirname($fdest), 
 				{ owner => $fowner, group => $fgroup, mode => oct($fmode + 100) }
@@ -547,10 +616,12 @@ if($mode eq "ci" || $mode eq "pi"){
 			);
 		}
 
-		copy($ffile, $fdest)
+		fcp($ffile,
+				$fdest,
+				$fmode,
+				$fuid,
+				$fgid, )
 			or warn "Could not copy the file to $fdest\n";
-		chmod oct($fmode), $fdest;
-		chown $fuid, $fgid, $fdest;
 	}
 	
 	hook("post_config_install");
