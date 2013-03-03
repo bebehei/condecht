@@ -1,6 +1,5 @@
 condecht
 ========
-
 condecht is a software to deploy and remove configfiles and their depending packages. You can save all your configfiles of all hosts in one central place and distinguish all files the same time time. With a main database of 
 With condecht you can store configurations of all your hosts in one (git/svn/bzr/whatever)-repository 
 With a versioning system you get a synchronized config-file base, what you can use on every system.
@@ -78,8 +77,8 @@ OPTIONs:
   *    --host $host   | Pretend to be on $host
   * -h --help         | print help and exit
 
-ConfigFile condecht.conf
-----------------------------
+ConfigFile packages.conf
+------------------------
 View the config-example.conf file in the root of the git repo for information.
 
 Config-Sections
@@ -149,13 +148,7 @@ Condecht is free software, you can distribute it and modify it under the terms o
 # LICENSE of the ./lib directory
 The ./lib directory contains the Config::IniFile module, which is distributed under the same terms of perl (GPL). The copyright of the whole ./lib directory belongs to its different owners.
 
-TODO
-----
-* Write some examples
-
 Examples
 --------
 
-\#Empty
-### Configuration
-### Execution
+For Examples look into the HOWTO-Directory.
