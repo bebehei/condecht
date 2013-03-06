@@ -1,6 +1,10 @@
 Internal Structure
 ------------------
 
+RULES
+-----
+1. To check if $package is available Section [$package all] has to exist. There must not checked for [package $main{host}].
+
 This file will be later a documentation for the internal structure, a short cheatsheet for the internal variable-names.
 
 Variables:

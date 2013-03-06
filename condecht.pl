@@ -77,6 +77,7 @@ sub fcp {
 	my ($ffile,$fdest,$fmode,$fuid,$fgid) = @_;
 	my $fowner = getpwuid($fuid);
 	my $fgroup = getgrgid($fgid);
+	my $fail = 0;
 ##todo
 #think about verbose option of mkpath
 #think about error option of mkpath
@@ -85,17 +86,33 @@ sub fcp {
 					group => $fgroup,
 					mode => oct($main{perm_d})
 				})
-		or warn "PATH: Could not create path " . dirname($fdest) . ": $!\n";
+		or $fail = 1;
 
 	#copy file $ffile, $fdest
-	copy($ffile, $fdest)
-		or warn "COPY: $ffile $!";
+	if(!$fail){
+		copy($ffile, $fdest) or $fail = 2;
+	}
+
 	#chmod file $fmode, $fdest
-	chmod oct($fmode), $fdest
-		or warn "CHMOD: failed at $fdest $!";
+	if(!$fail){
+		chmod oct($fmode), $fdest or $fail = 3;
+	}
+
 	#chown file $fuid, $fgid, $fdest
-	chown $fuid, $fgid, $fdest
-		or warn "CHOWN: failed at $fdest $!";
+	if(!$fail){
+		chown $fuid, $fgid, $fdest or $fail = 4;
+	}
+	
+	warn "PATH: failed creating path " . dirname($fdest) . ": $!\n"
+		if($fail == 1);
+	warn "COPY: failed at $fdest: $!"
+		if($fail == 2);
+	warn "CHMOD: failed at $fdest: $!"
+		if($fail == 3);
+	warn "CHOWN: failed at $fdest: $!"
+		if($fail == 4);
+
+	return $fail;
 }
 ##END FUNCTIONS ##
 
@@ -113,33 +130,43 @@ GetOptions(
 	"opt=s%"			=> \%main,
 	"help"				=> sub { pod2usage(1) },
 	# install/remove configs/packages
-	"pi=s{,}"			=> sub	{	if(!$mode or ($mode eq "pi"))
-														{ $mode = "pi"; shift(@_); push @pkgs, @_; }
-													else { exit(1); }
+	"pi=s{,}"			=> sub	{
+													if(!$mode or ($mode eq "pi")) {
+														$mode = "pi"; shift(@_); push @pkgs, @_;
+													} else { exit(1); }
 												},
-	"pr=s{,}"			=> sub	{	if(!$mode or ($mode eq "pr"))
-														{ $mode = "pr"; shift(@_); push @pkgs, @_; }
-													else { exit(1); }
+	"pr=s{,}"			=> sub	{
+													if(!$mode or ($mode eq "pr")) {
+															$mode = "pr"; shift(@_); push @pkgs, @_;
+													} else { exit(1); }
 												},
-	"ci=s{,}"			=> sub	{	if(!$mode or ($mode eq "ci"))
-														{ $mode = "ci"; shift(@_); push @pkgs, @_; }
-													else { exit(1); }
+	"ci=s{,}"			=> sub	{
+													if(!$mode or ($mode eq "ci")) {
+														$mode = "ci"; shift(@_); push @pkgs, @_;
+													} else { exit(1); }
 												},
-	"cr=s{,}"			=> sub	{	if(!$mode or ($mode eq "cr"))
-														{ $mode = "cr"; shift(@_); push @pkgs, @_; }
-													else { exit(1); }
+	"cr=s{,}"			=> sub	{
+													if(!$mode or ($mode eq "cr")) {
+														$mode = "cr"; shift(@_); push @pkgs, @_;
+													} else { exit(1); }
 												},
 	# list packages
-	"lp"					=> sub	{	if(!$mode or ($mode eq "lp")){ $mode = "lp"; }
-													else { exit(1); }
+	"lp"					=> sub	{
+													if(!$mode or ($mode eq "lp")){
+														$mode = "lp";
+													} else { exit(1); }
 												},
 	# backup
-	"b|backup"		=> sub	{	if(!$mode or ($mode eq "ba")){ $mode = "ba"; }
-													else { exit(1); }
+	"b|backup"		=> sub	{
+													if(!$mode or ($mode eq "ba")){
+														$mode = "ba";
+													} else { exit(1); }
 												},
 	# check config
-	"check"				=> sub	{	if(!$mode or ($mode eq "cc")){ $mode = "cc"; }
-													else { exit(1); }
+	"check"				=> sub	{
+													if(!$mode or ($mode eq "cc")){
+														$mode = "cc";
+													} else { exit(1); }
 												},
 );
 
@@ -174,7 +201,7 @@ my $cfg = Config::IniFiles->new(-file => $config_main, -nocase => 1)
 ##READ CONFIG_MAIN ##
 if($cfg->SectionExists("main")){
 	for((	"path", "backup", "host", "dist", "pkgINS",
-				"pkgREM", "user", "group", "home", "defperm")){
+				"pkgREM", "user", "group", "home","perm_f", "perm_d")){
 		if(defined $cfg->val("main", $_)){
 			# the value of the config file will be written into the $main{$_}
 			# only if it is not defined over commandline already
@@ -183,12 +210,12 @@ if($cfg->SectionExists("main")){
 			}
 		}
 		else {
-			die "Couldn't find definition of $_ in config-file $config_main\n";
+			die "CONFIG: Missing definition $_ in $config_main!\n";
 		}
 	}
 }
 else {
-	die "No Section main defined in config-file $config_main\n";
+	die "CONFIG: Missing section main $config_main!\n";
 }
 ##END READ CONFIG_MAIN ##
 
@@ -207,13 +234,13 @@ if(defined getpwnam($main{user})){
 	$main{uid} = (getpwnam($main{user}))[2];
 }
 else {
-	die "MAIN: The user $main{user} does not exist!\n";
+	die "CONFIG: No user $main{user}!\n";
 }
 if(defined getgrnam($main{group})){
 	$main{gid} = (getgrnam($main{group}))[2];
 }
 else {
-	die "MAIN: The group $main{group} does not exist!\n";
+	die "CONFIG: No group $main{group}!\n";
 }
 
 #CHECK: absolute path and trailing shlash of home and path
@@ -221,24 +248,35 @@ unless($main{path} =~ /\/$/){
 	$main{path} = $main{path} . "/";
 }
 unless($main{path} =~ /^\//){
-	die "CONFIG: definition of path is no absolute path in $config_main\n";
+	die "CONFIG: definition path is not absolute in $config_main\n";
 }
 unless($main{home} =~ /\/$/){
 	$main{home} = $main{home} . "/";
 }
 unless($main{home} =~ /^\//){
-	die "CONFIG: definition of home is no absolute path in $config_main\n";
+	die "CONFIG: definition home is not absolute in $config_main\n";
 }
 
-#CHECK: defperm
-if(length($main{defperm}) == 3){
-	$main{defperm} = "0$main{defperm}";
+#CHECK: default permissions of perm_d perm_f
+if(length($main{perm_d}) == 3){
+	$main{perm_d} = "0$main{perm_d}";
 }
 else {
-	die "MAIN: permissions in defperm are not valid\n";
+	die "CONFIG: perm_d permissions not valid!\n";
 }
-for my $char (split(//, $main{defperm})){
-	die "MAIN: permissions in defperm are not valid\n"
+for my $char (split(//, $main{perm_d})){
+	die "CONFIG: perm_d permissions not valid\n"
+		if(!(0 <= $char && $char <= 7));
+}
+
+if(length($main{perm_f}) == 3){
+	$main{perm_f} = "0$main{perm_f}";
+}
+else {
+	die "CONFIG: perm_f permissions not valid!\n";
+}
+for my $char (split(//, $main{perm_f})){
+	die "CONFIG: perm_f permissions not valid\n"
 		if(!(0 <= $char && $char <= 7));
 }
 
@@ -257,33 +295,29 @@ if($mode eq "lp"){
 	for my $package ($pkg->Groups){
 		print "$package\n";
 	}
-##todo
-	exit(0);
 }
 
 ##CHECK CONFIG_PKG ##
 if($mode eq "cc"){
-	print "packages.conf location: $main{config_pkg}\n";
+	print "PKGCONF: Location $main{config_pkg}\n";
 
 	# $pkg->Groups: use all packages to check whole config
 	for my $package ($pkg->Groups){
 		#CHECK: Section Exists
 		unless($pkg->SectionExists("$package all")){
-			warn "$package: section [$package all] does not exist\n";
-##todo
+			warn "PKGCONF: $package: missing section [$package all]!\n";
 			next;
-#continue;
 		}
 
 		#CHECK: Section Exsists for host
 		unless($pkg->SectionExists("$package $main{host}")){
-			warn "$package: section [$package $main{host}] does not exist\n";
+			warn "PKGCONF: $package: missing section [$package $main{host}]!\n";
 		}
 
 		#PRINT: Every note of Sections
 		for my $note ($pkg->val("$package all", "note"),
 									$pkg->val("$package $main{host}", "note")){
-			print "$package: note: $note\n";
+			print "NOTE: $package: $note\n";
 		}
 		
 		#CHECK: System packages
@@ -295,14 +329,14 @@ if($mode eq "cc"){
 				$count++;
 			}
 		}
-		warn "$package: No Systempackages are defined for your distribution\n"
+		warn "PKGCONF: $package: No Systempackages are defined!\n"
 			if($count == 0);
 	
 		#CHECK: Dependencies
 		for my $dep (	$pkg->val("$package all", "deps"),
 									$pkg->val("$package $main{host}", "deps")){
 			for(split(" ", $dep)){
-				warn "$package: unresolved dependency $_\n"
+				warn "PKGCONF: $package: unresolved dependency $_\n"
 					unless($pkg->SectionExists("$_ all"));
 			}
 		}
@@ -324,7 +358,7 @@ if($mode eq "cc"){
 			$fdest = $main{prefix} . $fdest;
 	
 			if($files{$fdest}){
-				warn "$package: duplicate definiton of file $fdest\n";
+				warn "PKGCONF: $package: duplicate definiton of file $fdest\n";
 			}
 
 			# check config, if all users are existing, groups too
@@ -333,14 +367,14 @@ if($mode eq "cc"){
 				$fuid = (getpwnam($fuser))[2];
 			}
 			else {
-				warn "$package: The user $fuser does not exist\n";
+				warn "PKGCONF: $package: No user $fuser!\n";
 			}
 			# same as above, just for the group
 			if(defined getgrnam($fgroup)){
 				$fgid = (getgrnam($fgroup))[2];
 			}
 			else {
-				warn "$package: The group $fgroup does not exist\n";
+				warn "PKGCONF: $package: No group $fgroup!\n";
 			}
 
 			$files{$fdest} = join(",", ($fdest, $ffile, $fmode,
@@ -352,7 +386,7 @@ if($mode eq "cc"){
 			if(-f $fdest){
 				#check filemode
 				if($fmode != sprintf "%o\n", (stat($fdest))[2] & 07777){
-					warn "$package: FILE: File $fdest has not mode $fmode\n";
+					warn "SYSTEM: $package: File $fdest has not mode $fmode\n";
 				}
 
 				#read uid and gid of files
@@ -362,23 +396,23 @@ if($mode eq "cc"){
 				my $efowner = getpwuid($efuid);
 
 				#warn if uid and gid are not the same as defined in packages.conf
-				warn "$package: FILE: File $fdest has user " .
-						 "$efowner($efuid) instead of $fuser($fuid)\n"
+				warn "SYSTEM: $package: File $fdest has user " .
+						 "$efowner($efuid) instead of $fuser($fuid)!\n"
 					if($fuid != $efuid);
-				warn "$package: FILE: File $fdest has group " .
-						 "$efgroup($efuid) instead of $fgroup($fgid)\n"
+				warn "SYSTEM: $package: File $fdest has group " .
+						 "$efgroup($efuid) instead of $fgroup($fgid)!\n"
 					if($fgid != $efgid);
 			}
 			else {
-				warn "$package: FILE: File $fdest is not available.\n";
+				warn "SYSTEM: $package: File $fdest is not available.\n";
 			}
 			# check config, if all files are in repo
 			if(! -f $ffile){
-				warn "$package: REPO: File $ffile is not available.\n";
+				warn "REPO: $package: File $ffile is not available.\n";
 			}
 		}
 	}
-	print "Registered system-packages:\n@syspkgs\n";
+	print "INFO: Registered system-packages:\n@syspkgs\n";
 }
 ##END CHECK CONFIG_PKG ##
 
@@ -393,10 +427,9 @@ if($mode eq "ba"){
 	#SAVE: $config_main
 	fcp($config_main,
 			"$main{path}backup.d/$main{host}/$today/condecht",
-			$main{defperm},
+			$main{perm_f},
 			$main{uid},
-			$main{gid}, )
-		or warn "Could not copy $config_main: $!";
+			$main{gid}, );
 
 	for my $package ($pkg->Groups){
 		#SAVE: files
@@ -411,11 +444,9 @@ if($mode eq "ba"){
 			# copy, chmod and chown
 			fcp($fdest,
 					"$main{path}backup.d/$main{host}/$today/$package/$ffile",
-					$main{defperm},
+					$main{perm_f},
 					$main{uid},
-					$main{gid})
-##todo
-				or warn "failed";
+					$main{gid});
 		}
 
 		#SAVE: hooks
@@ -426,10 +457,9 @@ if($mode eq "ba"){
 				# copy, chmod and chown
 				fcp("$main{path}$main{host}/$package/$hook",
 						"$main{path}backup.d/$main{host}/$today/$package/$hook",
-						$main{defperm},
+						$main{perm_f},
 						$main{uid},
-						$main{gid})
-					or warn "could not fcp test $!";
+						$main{gid});
 
 			}
 		}
@@ -442,19 +472,19 @@ if($mode eq "ba"){
 for my $package (@pkgs){
 	#CHECK: Section Exists
 	unless($pkg->SectionExists("$package all")){
-		die "$package: section [$package all] doesn't exist.\n";
+		die "PKGCONF: $package: missing section [$package all]!\n";
 	}
 
 	#CHECK: Section Exsists for host
 	unless($pkg->SectionExists("$package $main{host}")){
-		warn "$package: section [$package $main{host}] doesn't exist.\n"
+		warn "PKGCONF: $package: missing section [$package $main{host}]!\n"
 				if($main{verbose});
 	}
 	#PRINT: notes and save them to @notes (will print it at the end again)
 	for my $note ($pkg->val("$package all", "note"),
 								$pkg->val("$package $main{host}", "note")){
-		print "$package: $note\n";
-		push @notes, "$package: $note";
+		print "NOTE: $package: $note\n";
+		push @notes, "NOTE: $package: $note";
 	}
 
 	#READ: systempackages for distribution
@@ -466,18 +496,18 @@ for my $package (@pkgs){
 			$count++;
 		}
 	}
-	warn "$package: No Systempackages are defined for your distribution\n"
+	warn "$package: No Systempackages are defined!\n"
 		if($count == 0 && $main{verbose});
 
 	#READ: Dependencies
 	for my $dep (	$pkg->val("$package all", "deps"),
 								$pkg->val("$package $main{host}", "deps")){
 		for(split(" ", $dep)){
-			print "ADDED package $_ as dependency from $package\n"
+			print "PKGCONF: $package: dependency $_ added.\n"
 				if($main{verbose});
-##todo
-			warn "$package: unresolved dependency $_\n"
+			die "PKGCONF: $package: unresolved dependency $_!\n"
 				unless($pkg->SectionExists("$_ all"));
+##todo nur überprüfen ob funktioniert
 			push @pkgs, $_
 				unless( any { /^$_$/ } @pkgs);
 		}
@@ -500,7 +530,7 @@ for my $package (@pkgs){
 		$fdest = $main{prefix} . $fdest;
 
 		if($files{$fdest}){
-			warn "$package: duplicate definiton of:\n$files{$ffile}\nwith\n$file\n"
+			warn "PKGCONF: $package: duplicate definiton of: $fdest\n"
 				if($main{verbose});
 		}
 
@@ -510,14 +540,14 @@ for my $package (@pkgs){
 			$fuid = (getpwnam($fuser))[2];
 		}
 		else {
-			die "$package: The user $fuser does not exist\n";
+			die "PKGCONF: $package: No user $fuser!\n";
 		}
 		# same as above, just for the group
 		if(defined getgrnam($fgroup)){
 			$fgid = (getgrnam($fgroup))[2];
 		}
 		else {
-			die "$package: The group $fgroup does not exist\n";
+			die "PKGCONF: $package: No group $fgroup!\n";
 		}
 
 		$files{$fdest} = join(",", ($fdest, $ffile, $fmode,
@@ -561,12 +591,25 @@ if($mode eq "cr" || $mode eq "pr"){
 			$fdest2 =~ s/\//-/g;
 			$fdest2 =~ s/\.//g;
 
-			fcp($fdest,
-					"$main{path}backup.d/$main{host}/old/$fdest2",
-					$main{defperm},
-					$main{uid},
-					$main{gid}, )
-				or warn "Could not backup file $fdest\n";
+			my $exitcode = fcp(	$fdest,
+													"$main{path}backup.d/$main{host}/old/$fdest2",
+													$main{perm_f},
+													$main{uid},
+													$main{gid}, );
+
+			my @errors = (
+				"No error!",
+				"create the path",
+				"backup the file",
+				"chmod the file",
+				"chown the file",
+				);
+
+			printf STDERR "The subroutine failed to $errors[$exitcode]. " .
+										"Press Enter to go ahead or hit <Ctrl>-C to bail out.";
+			$exitcode = <STDIN>;
+			undef(@errors);
+			undef($exitcode);
 
 		}
 		unlink($fdest)
@@ -603,31 +646,40 @@ if($mode eq "ci" || $mode eq "pi"){
 	for my $file (values %files){
 		my ($fdest,$ffile,$fmode,$fowner,$fuid,$fgroup,$fgid) = split(",", $file);
 
-		##todo
-		# check if $fmode permissions are executable
-		if($fmode =~ /^(0|2|4|6)/){
-			mkpath(dirname($fdest), 
-				{ owner => $fowner, group => $fgroup, mode => oct($fmode + 100) }
-			);
-		}
-		else {
-			mkpath(dirname($fdest), 
-				{ owner => $fowner, group => $fgroup, mode => oct($fmode) }
-			);
-		}
+		my $exitcode = fcp(	$ffile,
+												$fdest,
+												$fmode,
+												$fuid,
+												$fgid, );
 
-		fcp($ffile,
-				$fdest,
-				$fmode,
-				$fuid,
-				$fgid, )
-			or warn "Could not copy the file to $fdest\n";
+		my @errors = (
+			"No error!",
+			"create the path",
+			"deploy the file",
+			"chmod the file",
+			"chown the file",
+			);
+
+		printf STDERR "The subroutine failed to $errors[$exitcode]. " .
+									"Press Enter to go ahead or hit <Ctrl>-C to bail out.";
+		$exitcode = <STDIN>;
+
+		undef(@errors);
+		undef($exitcode);
 	}
 	
 	hook("post_config_install");
 }
 	
 hook("post");
+
+# check if installing/removing packages/configs
+if($mode =~ m/^(c|p)(r|i)$/){
+	# print out notes again
+	for my $note (@notes){
+		print "$note\n";
+	}
+}
 
 exit(0);
 
@@ -644,7 +696,6 @@ Condecht is a config-file distribution software.
 condecht <ACTION> @packages
 
 =over 8
-
 =item B<--help>
 
 Print this help-page.
