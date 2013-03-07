@@ -3,9 +3,9 @@
 - create/finish howto
 - test all parts
 - when adding dependencies to @packages there is no check, if 
-- instead of putting @syspkgs putting at the end -> create placeholder like %p
-- add prefix to cc and ba modes
-- wird @notes später wieder angezeigt?
+- instead of putting @syspkgs at the end after $pkgINS -> create placeholder like %p
+- should $user$ $group$ or $home$ also get replaced in other variables than $fuser $fgroup or $fdest?
+  maybe doing it on the whole string, before spliting it!?
 
 ## ADD lp with tree dependencies
 if($mode == "lp"){
@@ -17,7 +17,7 @@ if($mode == "lp"){
 	my @dependencies;
 
 	# not sure if obsolete:
-	if(@dependencies =~ /\/$pkg\/(.*)\/$dep\//){
+	if( any { /\/$pkg\// } @dependencies){
 		next;
 	}
 }
@@ -62,3 +62,4 @@ is it better to delete all last slashes?
 ## trailing slash directory:
 The $home$ replacement does the same! should there be
 all trailing slashes replaced or just the last?
+

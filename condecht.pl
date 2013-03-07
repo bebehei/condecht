@@ -292,8 +292,21 @@ my $pkg = Config::IniFiles->new(-file => $main{config_pkg}, -nocase => 1)
 ##DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
 # list packages
 if($mode eq "lp"){
+
 	for my $package ($pkg->Groups){
 		print "$package\n";
+	}
+	die "not implemented further things.";
+
+	my @deps;
+	my @is_dep;
+	for my $package ($pkg->Groups){
+		push @is_dep, $pkg->val("$package all", "deps");
+		push @is_dep, $pkg->val("$package $main{host}", "deps");
+
+	}
+	for my $package ($pkg->Groups){
+		push @deps, $package;
 	}
 }
 
@@ -429,7 +442,8 @@ if($mode eq "ba"){
 			"$main{path}backup.d/$main{host}/$today/condecht",
 			$main{perm_f},
 			$main{uid},
-			$main{gid}, );
+			$main{gid},
+		);
 
 	for my $package ($pkg->Groups){
 		#SAVE: files
@@ -440,27 +454,28 @@ if($mode eq "ba"){
 			# used to prevent a double slash after home-dir
 			$fdest =~ s/\$home\$\//$main{home}/; 
 			$fdest =~ s/\$home\$/$main{home}/;
+			$fdest = $main{prefix} . $fdest;
 
 			# copy, chmod and chown
 			fcp($fdest,
 					"$main{path}backup.d/$main{host}/$today/$package/$ffile",
 					$main{perm_f},
 					$main{uid},
-					$main{gid});
+					$main{gid},
+				);
 		}
 
 		#SAVE: hooks
 		for my $hook (@hooks){
 			# check if file available -> create path only, if there are hooks
-			if( -f $main{path} . $main{host} . "/" . $package . "/" . $hook){
-
+			if( -f "$main{path}$main{host}/$package/$hook"){
 				# copy, chmod and chown
 				fcp("$main{path}$main{host}/$package/$hook",
 						"$main{path}backup.d/$main{host}/$today/$package/$hook",
 						$main{perm_f},
 						$main{uid},
-						$main{gid});
-
+						$main{gid},
+					);
 			}
 		}
 	}
@@ -595,7 +610,8 @@ if($mode eq "cr" || $mode eq "pr"){
 													"$main{path}backup.d/$main{host}/old/$fdest2",
 													$main{perm_f},
 													$main{uid},
-													$main{gid}, );
+													$main{gid},
+												);
 
 			my @errors = (
 				"No error!",
@@ -650,7 +666,8 @@ if($mode eq "ci" || $mode eq "pi"){
 												$fdest,
 												$fmode,
 												$fuid,
-												$fgid, );
+												$fgid,
+											);
 
 		my @errors = (
 			"No error!",
@@ -686,28 +703,107 @@ exit(0);
 __END__
 =head1 NAME
 
-Condecht
+Condecht - a little config deploying and system-package install tool
 
-=head2 Condecht
-Condecht is a config-file distribution software.
+=head1 USAGE
 
-=head1 SYNOPSIS
+condecht [OPTIONs] <ACTION> @packages
 
-condecht <ACTION> @packages
+=head2 ACTIONS
 
-=over 8
+=over 2
+
+=item B<--pi> PACKAGES
+
+install packages and configs
+
+=item B<--pr> PACKAGES
+
+remove packages and configs
+
+=item B<--ci> PACKAGES
+
+Install only configs
+
+=item B<--cr> PACKAGES
+
+Remove only configs
+
+=item B<--backup>
+
+create a snapshot of all config-files
+
+=item B<--check>
+
+check your packages.conf file for errors
+
+=item B<--lp>
+
+list all available condecht-packages
+
+=back
+
+=head2 OPTIONs
+
+=over 2
+
+=item B<-c --config> /path/to/alternate/config
+
+specify an alternate config
+
+=item B<-h --host> HOSTNAME
+
+specify an alternate host
+
+=item B<-d --dir> /path/to/homedir
+
+specify an alternate home-dir
+
+=item B<-u --user> existing user
+
+specify an alternate user
+
+=item B<-g --group> existing group
+
+specify an alternate group
+
+=item B<-p --prefix> /prefix/path
+
+specify a prefix (standard: /)
+
+=item  B<-v --verbose>
+
+be verbose
+
+=item B<--debug>
+
+print debug messages (not implemented yet)
+
+=item B<--opt> option=value
+
+set any internal option (example: --opt host=hostname)
+
 =item B<--help>
 
-Print this help-page.
-
-=item B<--ci>
-
+print this help-page
 
 =back
 
 =head1 DESCRIPTION
 
-B<This program> will read the given input file(s) and do something
-useful with the contents thereof.
+Condecht is deploying config files and can install corresponding systempackages.
+
+=head1 LICENSE
+
+Condecht is distributed under the terms of the GPLv3 LICENSE.
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+See the LICENSE file in your source-repository.
+
+Condecht is maintained by Benedikt Heine. For any questions contact me over <me@bebehei.de>.
+
+You can find the development-website at <https://github.com/bebehei/condecht>.
+
+Please report any bug in english at <https://github.com/bebehei/condecht/issues>.
 
 =cut
