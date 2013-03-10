@@ -665,9 +665,13 @@ if($mode eq "cr" || $mode eq "pr"){
 				"chown the file",
 				);
 
-			printf STDERR "The subroutine failed to $errors[$exitcode]. " .
-										"Press Enter to go ahead or hit <Ctrl>-C to bail out.";
-			$exitcode = <STDIN>;
+			if($exitcode != 0){
+				printf STDERR "The subroutine failed to $errors[$exitcode]. " .
+											"Press Enter to go ahead or hit <Ctrl>-C to bail out.";
+				# wait for user-input
+				$exitcode = <STDIN>;
+			}
+
 			undef(@errors);
 			undef($exitcode);
 
@@ -721,12 +725,16 @@ if($mode eq "ci" || $mode eq "pi"){
 			"chown the file",
 			);
 
-		printf STDERR "The subroutine failed to $errors[$exitcode]. " .
-									"Press Enter to go ahead or hit <Ctrl>-C to bail out.";
-		$exitcode = <STDIN>;
+		if($exitcode != 0){
+			printf STDERR "The subroutine failed to $errors[$exitcode]. " .
+										"Press Enter to go ahead or hit <Ctrl>-C to bail out.";
+			# wait for user-input
+			$exitcode = <STDIN>;
+		}
 
 		undef(@errors);
 		undef($exitcode);
+
 	}
 	
 	hook("post_config_install");
