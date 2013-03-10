@@ -81,12 +81,14 @@ sub fcp {
 ##todo
 #think about verbose option of mkpath
 #think about error option of mkpath
-	mkpath(dirname($fdest), 
-				{	owner => $fowner,
-					group => $fgroup,
-					mode => oct($main{perm_d})
-				})
-		or $fail = 1;
+	if(! -d dirname($fdest)){
+		mkpath(dirname($fdest), 
+					{	owner => $fowner,
+						group => $fgroup,
+						mode => oct($main{perm_d})
+					})
+			or $fail = 1;
+	}
 
 	#copy file $ffile, $fdest
 	if(!$fail){
@@ -296,17 +298,59 @@ if($mode eq "lp"){
 	for my $package ($pkg->Groups){
 		print "$package\n";
 	}
-	die "not implemented further things.";
+	#die "not implemented further things.";
 
-	my @deps;
-	my @is_dep;
+	my @lines;
+	my @has_deps;
+
 	for my $package ($pkg->Groups){
-		push @is_dep, $pkg->val("$package all", "deps");
-		push @is_dep, $pkg->val("$package $main{host}", "deps");
-
+		push @lines, "/$package/";
 	}
+
 	for my $package ($pkg->Groups){
-		push @deps, $package;
+		for my $ldep ( $pkg->val("$package all", "deps"),
+									$pkg->val("$package $main{host}", "deps")){
+			for my $dep (split(" ", $ldep)){
+##debug
+				#print "dep: $dep; line: @lines[(List::MoreUtils::firstidx { /\/$dep\// } @lines)]\n";
+				my $index =  List::MoreUtils::firstidx { /\/$dep\// } @lines;
+				print "$index\n";
+				
+				$lines[$index] =~ s/^/\/$package/;
+
+				push @has_deps, $package
+					if(defined $index);
+			}
+		}
+	}
+	@lines = sort @lines;
+	#delete last slash again
+	for(@lines){
+		s/\/$//;
+	}
+
+	for my $package (@has_deps){
+		my $length = length($package);
+		print $length;
+
+		my $space = "";
+		for(my $i = 0; $i < $length; $i = $i + 1){
+			$space = $space . " ";
+			print "space"
+		}
+		print "\n";
+
+		$lines[List::MoreUtils::firstidx { /\/$package\// } @lines] =~ s/^\s*\/$package\//$space/;
+	}
+
+	print "\n\n";
+	for(@has_deps){
+		print "$_\n";
+	}
+	
+	print "\n\n";
+	for(@lines){
+		print "$_\n";
 	}
 }
 
