@@ -1,5 +1,4 @@
 condecht
-========
 
 condecht is used to install systempackages and their depending
 user-configured configfiles. You can save all configfiles in one
@@ -18,8 +17,10 @@ If you have decided to use condecht, just change to the HOWTO-directory.
 Installation
 ------------
 
-Just copy the file condecht.pl to at least one directory, which is in $PATH.
-Additionally install the dependencies.
+1. Install the Dependencies listed below.
+2. If you are not root, edit the standard-variables at the beginning of the script.
+3. Just copy now the file condecht.pl to at least one directory, which is in $PATH.
+
 That's all!
 
 Dependencies
@@ -29,124 +30,48 @@ You have to have a clean basic perl installation.
 
 Additionally, condecht needs these perl-modules:
   Config::IniFiles
-	List::MoreUtils
+  List::MoreUtils
 
 I consider to install it with
   sudo cpan -i "Config::IniFiles" "List::MoreUtils"
 
-Main Files
-----------
-There are 3 Main Files:
-* The condecht.pl Executable or the condecht command
-* The /etc/condecht Configuration-File for condecht
-* The packages.conf package-conf-file located at the root of your repo
-
-condecht tree-structure
------------------------
-**ROOT**
-* the executable:
-  * condecht (link to condecht.pl)
-  * condecht.pl
-* the condecht-config
-  * $condechthost/
-   * $package/
-    * config-files for $package
-
-### The Tree
-~ = CondechtRoot (defined in /etc/condecht)
-
-* /etc/condecht
-* ~/condecht.pl
-* ~/condecht (link to condecht.pl)
-* ~/packages.conf
-* ~/$host/
-* ~/$host/$package/
-* ~/$host/$package/$config-file1
-* ~/$host/$package/$config-file2
-* ~/$host/$package/$config-fileX
-
 USAGE
 -----
-condecht [OPTIONs] COMMAND $package
 
-COMMANDs:
-You have to combine at least two of those four options together
-  * --pi @packages | Install @packages & config
-  * --pr @packages | Remove @packages & config
-  * --ci @packages | install config of @packages
-  * --cr @packages | remove config of @packages
+condecht [OPTIONs] <ACTION> @packages
 
-  * --lp | list the packages, configured in your packages.conf
-	* --ba | backup all configuration files to $condechtPATH/backup.d/$host/$date/$package/$file
+ ACTIONS
+  --pi PACKAGES install packages and configs
+  --pr PACKAGES remove packages and configs
+  --ci PACKAGES Install only configs
+  --cr PACKAGES remove only configs
 
-OPTIONs:
-  * -c --config $file | take $file as alternative config-file for condecht
-  *    --check        | check the config-file of condecht for errors (missing files, etc)
-  *    --host $host   | Pretend to be on $host
-  * -h --help         | print help and exit
+  --backup      create a snapshot of all config-files
+  --check       check your packages.conf file for errors
+  --lp          list all available condecht-packages
 
-ConfigFile packages.conf
-------------------------
-View the config-example.conf file in the root of the git repo for information.
+ OPTIONs
+  -c --config /path/to/alternate/config
+    specify an alternate config
+  -p --prefix /prefix/path
+    specify a prefix (standard: /)
+  -h --host HOSTNAME
+    specify an alternate host
 
-Config-Sections
----------------
-There are a few variables, which are important:
+  -d --dir /path/to/homedir
+    specify an alternate home-dir
+  -u --user $user
+    specify an alternate user
+  -g --group $group
+    specify an alternate group
 
-### /etc/condecht config-section
-<table>
-<tr>
-	<th>Parameter</th>
-	<th>Description</th>
-</tr>
-<tr>
-	<td>host</td>
-	<td>Defines, which host of your repository you have to use.</td>
-</tr>
-<tr>
-	<td>dist</td>
-	<td>This variable defines, which distribution condecht has to use to install the right packages. You can say, that every unique host has got every time the same distribution. But the same distribution doesn't say that you have got the same host.</td>
-</tr>
-<tr>
-	<td>pkgINS</td>
-	<td>Defines the command, which gets executed to remove a package.</td>
-</tr>
-<tr>
-	<td>pkgREM</td>
-	<td>Same as pkgINS, used to remove.</td>
-</tr>
-<tr>
-	<td colspan=2>These Parameters are not used yet!</td>
-</tr>
-<tr>
-	<td>repServerUpd</td>
-	<td>The command, Update your master repository, to update recent updated files</td>
-</tr>
-<tr>
-	<td>repClientUpd</td>
-	<td>The command, to get the latest version of your master repo.</td>
-</tr>
-</table>
+  -v --verbose  be verbose
+  --debug       print debug messages
 
-###packages.conf config-section
-<table>
-<tr>
-	<th>Parameter</th>
-	<th>Description</th>
-</tr>
-<tr>
-	<td>dist</td>
-	<td>There are the packages of the system stored, which are going to get installed. A record contains the following data: the distro, followed by a colon, behind it listed the packages.</td>
-</tr>
-<tr>
-	<td>file</td>
-	<td>It describes the config-files, where they are stored, what name they have, which group/owner and the mode. For more, check out the sample packages.conf file.</td>
-</tr>
-<tr>
-	<td>note</td>
-	<td>This field will be displayed while installation. When you want to get reminded of sth, for example copy the keys to a specific place use it.</td>
-</tr>
-</table>
+  --opt option=value
+    set any internal option (example: --opt host=hostname)
+
+  --help print the help-page
 
 LICENSE
 -------
@@ -155,8 +80,3 @@ Condecht is free software, you can distribute it and modify it under the terms o
 
 # LICENSE of the ./lib directory
 The ./lib directory contains the Config::IniFile module, which is distributed under the same terms of perl (GPL). The copyright of the whole ./lib directory belongs to its different owners.
-
-Examples
---------
-
-For Examples look into the HOWTO-Directory.

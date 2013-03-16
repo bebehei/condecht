@@ -21,19 +21,37 @@
 #   with the name LICENSE.
 #
 
+##DEFAULT VARIABLES ##
+# This variable is responsible, where condecht searches for your main config
+# file. If you don't have root access it would be necessary to change it to
+# your HOME directory.
+my $config_main = "/etc/condecht";
+# This is the filename, where your main database is stored in your repository.
+my $config_pkg = "packages.conf";
+
+#STOP EDITING HERE!!
+my @hooks = (	"pre", "pre_pkg_install", "post_pkg_install",
+							"pre_config_remove", "post_config_remove",
+							"pre_pkg_remove", "post_pkg_remove",
+							"pre_config_install", "post_config_install", "post");
+##END DEFAULT VARIABLES ##
+
 ##LOAD MODULES ##
 use warnings;
 use strict;
-# extra modules
-use lib "./lib";
-use Config::IniFiles;
-use List::MoreUtils qw(any);
 # standard modules
 use Getopt::Long;
 use Pod::Usage;
 use File::Path;
 use File::Copy;
 use File::Basename;
+# extra modules
+##todo test
+unless(use Config::Inifiles){
+	use lib "./lib";
+}
+use Config::IniFiles;
+use List::MoreUtils;
 ##END LOAD MODULES ##
 
 ##DECLARE EMPTY VARIABLES ##
@@ -45,15 +63,6 @@ my %files;   #all values of the parameter file at the depending
              #sections to all @pkgs
 my @notes;   #saves all notes, to print them at the end again
 ##END DECLARE EMPTY VARIABLES ##
-
-##DEFAULT VARIABLES ##
-my $config_main = "/etc/condecht";
-my $config_pkg = "packages.conf";
-my @hooks = (	"pre", "pre_pkg_install", "post_pkg_install",
-							"pre_config_remove", "post_config_remove",
-							"pre_pkg_remove", "post_pkg_remove",
-							"pre_config_install", "post_config_install", "post");
-##END DEFAULT VARIABLES ##
 
 ##FUNCTIONS ##
 sub hook {
@@ -775,11 +784,11 @@ remove packages and configs
 
 =item B<--ci> PACKAGES
 
-Install only configs
+install only configs
 
 =item B<--cr> PACKAGES
 
-Remove only configs
+remove only configs
 
 =item B<--backup>
 

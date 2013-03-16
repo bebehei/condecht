@@ -1,0 +1,90 @@
+
+condecht tree-structure
+-----------------------
+**ROOT**
+* the executable:
+  * condecht (link to condecht.pl)
+  * condecht.pl
+* the condecht-config
+  * $condechthost/
+   * $package/
+    * config-files for $package
+
+### The Tree
+~ = CondechtRoot (defined in /etc/condecht)
+
+* /etc/condecht
+* ~/condecht.pl
+* ~/condecht (link to condecht.pl)
+* ~/packages.conf
+* ~/$host/
+* ~/$host/$package/
+* ~/$host/$package/$config-file1
+* ~/$host/$package/$config-file2
+* ~/$host/$package/$config-fileX
+
+Main Files
+----------
+There are 3 Main Files:
+* The condecht.pl Executable or the condecht command
+* The /etc/condecht Configuration-File for condecht
+* The packages.conf package-conf-file located at the root of your repo
+
+Config-Sections
+---------------
+There are a few variables, which are important:
+
+### /etc/condecht config-section
+<table>
+<tr>
+	<th>Parameter</th>
+	<th>Description</th>
+</tr>
+<tr>
+	<td>host</td>
+	<td>Defines, which host of your repository you have to use.</td>
+</tr>
+<tr>
+	<td>dist</td>
+	<td>This variable defines, which distribution condecht has to use to install the right packages. You can say, that every unique host has got every time the same distribution. But the same distribution doesn't say that you have got the same host.</td>
+</tr>
+<tr>
+	<td>pkgINS</td>
+	<td>Defines the command, which gets executed to remove a package.</td>
+</tr>
+<tr>
+	<td>pkgREM</td>
+	<td>Same as pkgINS, used to remove.</td>
+</tr>
+<tr>
+	<td colspan=2>These Parameters are not used yet!</td>
+</tr>
+<tr>
+	<td>repServerUpd</td>
+	<td>The command, Update your master repository, to update recent updated files</td>
+</tr>
+<tr>
+	<td>repClientUpd</td>
+	<td>The command, to get the latest version of your master repo.</td>
+</tr>
+</table>
+
+###packages.conf config-section
+<table>
+<tr>
+	<th>Parameter</th>
+	<th>Description</th>
+</tr>
+<tr>
+	<td>dist</td>
+	<td>There are the packages of the system stored, which are going to get installed. A record contains the following data: the distro, followed by a colon, behind it listed the packages.</td>
+</tr>
+<tr>
+	<td>file</td>
+	<td>It describes the config-files, where they are stored, what name they have, which group/owner and the mode. For more, check out the sample packages.conf file.</td>
+</tr>
+<tr>
+	<td>note</td>
+	<td>This field will be displayed while installation. When you want to get reminded of sth, for example copy the keys to a specific place use it.</td>
+</tr>
+</table>
