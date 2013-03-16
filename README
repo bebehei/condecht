@@ -1,30 +1,38 @@
 condecht
 ========
-condecht is a software to deploy and remove configfiles and their depending packages. You can save all your configfiles of all hosts in one central place and distinguish all files the same time time. With a main database of 
-With condecht you can store configurations of all your hosts in one (git/svn/bzr/whatever)-repository 
-With a versioning system you get a synchronized config-file base, what you can use on every system.
+
+condecht is used to install systempackages and their depending
+user-configured configfiles. You can save all configfiles in one
+central repository, which can contain the files of all of your hosts.
+You're able to connect different packages of your system to one
+condecht-package, which can contain your configuration, too.
+With the power of a versionioning repository like git, you can have
+a history about the changes in your files.
+
+A little Example to explain it:
+
+# todo
+
+If you have decided to use condecht, just change to the HOWTO-directory.
+
+Installation
+------------
+
+Just copy the file condecht.pl to at least one directory, which is in $PATH.
+Additionally install the dependencies.
+That's all!
 
 Dependencies
 ------------
 
-You have to install these perl-module:
-* Config::IniFiles
+You have to have a clean basic perl installation.
 
-Install it with `sudo cpan -i "Config::IniFiles"`
+Additionally, condecht needs these perl-modules:
+  Config::IniFiles
+	List::MoreUtils
 
-There modules Getopt::Long and Pod::Usage should be included in a standard perl installation. If not install them with `sudo cpan -i Getopt::Long Pod::Usage`.
-
-Here is a list of all used modules:
-* Config::IniFiles;
-* Getopt::Long;
-* Pod::Usage;
-* File::Path;
-* File::Copy;
-
-I'm new and i wanna start right now!
-------------------------------------
-
-Go into the HOWTO-directory. Read the textfile HOWTO.
+I consider to install it with
+  sudo cpan -i "Config::IniFiles" "List::MoreUtils"
 
 Main Files
 ----------
