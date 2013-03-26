@@ -1,0 +1,31 @@
+- hook funktion
+- jeder hook muss ausgeführt werden!
+- getopt und nach überschreiben -> funktioniert
+- allgemein: jeder mkpath logik checken
+- allgemein: jedes copy, chown und chmod checken
+- if($main{verbose})
+- check prefix -> funktioniert
+
+CONFIG_MAIN check:
+- check config main
+- default user/group überprüfung 
+- homedir/pathdir checks
+
+Mode lp
+
+
+mode cc
+- check of system packages: counter count up?
+- replacement of $home$,..
+- duplicate definition check
+- user/group gid
+- all filechecks of all files
+
+read packages.conf
+- @notes should printed out
+- adding dependencies to @pkgs
+
+mode cr
+- main backup: check if value false is creating backup too
+- unlink check
+
