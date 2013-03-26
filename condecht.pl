@@ -47,9 +47,7 @@ use File::Copy;
 use File::Basename;
 # extra modules
 ##todo test
-unless(use Config::Inifiles){
-	use lib "./lib";
-}
+use lib "./lib";
 use Config::IniFiles;
 use List::MoreUtils;
 ##END LOAD MODULES ##
@@ -135,7 +133,7 @@ GetOptions(
 	"d|dir=s"			=> \$main{home},
 	"g|group=s"		=> \$main{group},
 	"u|user=s"		=> \$main{user},
-	"v|verbose"		=> \$main{verb},
+	"v|verbose"		=> \$main{verbose},
 	"debug"				=> \$main{debug},
 	"p|prefix=s"	=> \$main{prefix},
 	"opt=s%"			=> \%main,
@@ -187,6 +185,9 @@ if(!$mode){
 }
 if($main{debug}){
 	warn "The option debug is not in use yet!\n";
+}
+if(!$main{verbose}){
+	$main{verbose} = 0;
 }
 if(!$main{prefix}){
 	# define prefix as empty -> no error for uninitialized value
@@ -365,7 +366,7 @@ if($mode eq "lp"){
 
 ##CHECK CONFIG_PKG ##
 if($mode eq "cc"){
-	print "PKGCONF: Location $main{config_pkg}\n";
+	print "PKGCONF: INFO: Location $main{config_pkg}\n";
 
 	# $pkg->Groups: use all packages to check whole config
 	for my $package ($pkg->Groups){
@@ -377,13 +378,15 @@ if($mode eq "cc"){
 
 		#CHECK: Section Exsists for host
 		unless($pkg->SectionExists("$package $main{host}")){
-			warn "PKGCONF: $package: missing section [$package $main{host}]!\n";
+			warn "PKGCONF: $package: missing section [$package $main{host}]!\n"
+				if($main{verbose} > 0);
 		}
 
 		#PRINT: Every note of Sections
 		for my $note ($pkg->val("$package all", "note"),
 									$pkg->val("$package $main{host}", "note")){
-			print "NOTE: $package: $note\n";
+			print "NOTE: $package: $note\n"
+				if($main{verbose} > 0);
 		}
 		
 		#CHECK: System packages
