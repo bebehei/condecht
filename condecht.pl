@@ -24,17 +24,19 @@
 ##DEFAULT VARIABLES ##
 # This variable is responsible, where condecht searches for your main config
 # file. If you don't have root access it would be necessary to change it to
-# your HOME directory.
+# your HOME-directory.
 my $config_main = "/etc/condecht";
 # This is the filename, where your main database is stored in your repository.
 my $config_pkg = "packages.conf";
+##END DEFAULT VARIABLES ##
 
-#STOP EDITING HERE!!
+###################################
+# STOP EDITING HERE!!             #
+###################################
 my @hooks = (	"pre", "pre_pkg_install", "post_pkg_install",
 							"pre_config_remove", "post_config_remove",
 							"pre_pkg_remove", "post_pkg_remove",
 							"pre_config_install", "post_config_install", "post");
-##END DEFAULT VARIABLES ##
 
 ##LOAD MODULES ##
 use warnings;
@@ -99,7 +101,12 @@ sub fcp {
 
 	#copy file $ffile, $fdest
 	if(!$fail){
-		copy($ffile, $fdest) or $fail = 2;
+		if($mode{link}){
+			link($ffile, $fdest) or $fail = 2; 
+		}
+		else {
+			copy($ffile, $fdest) or $fail = 2;
+		}
 	}
 
 	#chmod file $fmode, $fdest
@@ -136,6 +143,7 @@ GetOptions(
 	"v|verbose"		=> \$main{verbose},
 	"debug"				=> \$main{debug},
 	"p|prefix=s"	=> \$main{prefix},
+	"l|link"			=> \%main{link},
 	"opt=s%"			=> \%main,
 	"help"				=> sub { pod2usage(1) },
 	# install/remove configs/packages
@@ -810,6 +818,10 @@ list all available condecht-packages
 =head2 OPTIONs
 
 =over 2
+
+=item B<-l --link>
+
+link config-files instead of copying
 
 =item B<-c --config> /path/to/alternate/config
 
