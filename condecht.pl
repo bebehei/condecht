@@ -316,11 +316,6 @@ my $pkg = Config::IniFiles->new(-file => $main{config_pkg}, -nocase => 1)
 # list packages
 if($mode eq "lp"){
 
-	for my $package ($pkg->Groups){
-		print "$package\n";
-	}
-	#die "not implemented further things.";
-
 	my @lines;
 	my @has_deps;
 
@@ -328,48 +323,37 @@ if($mode eq "lp"){
 		push @lines, "/$package/";
 	}
 
-	for my $package ($pkg->Groups){
-		for my $ldep ( $pkg->val("$package all", "deps"),
-									$pkg->val("$package $main{host}", "deps")){
-			for my $dep (split(" ", $ldep)){
-##debug
-				#print "dep: $dep; line: @lines[(List::MoreUtils::firstidx { /\/$dep\// } @lines)]\n";
-				my $index =  List::MoreUtils::firstidx { /\/$dep\// } @lines;
-				print "$index\n";
-				
-				$lines[$index] =~ s/^/\/$package/;
+	#debug
+	#for my $package ($pkg->Groups){
+	#	print "$package\n";
+	#}
+	#die "not implemented further things.";
 
-				push @has_deps, $package
-					if(defined $index);
+	for my $package ($pkg->Groups){
+		for my $package2 ($pkg->Groups){
+			for my $ldep ($pkg->val("$package2 all", "deps"),
+										$pkg->val("$package2 $main{host}", "deps")){
+			for my $dep (split(" ", $ldep)){
+		#		print "1:$package, 2:$package2, dep: $ldep\n";
+				if($dep eq $package){
+		#			print "hit:$package $package2\n";
+					for my $line (@lines){
+						
+						#replace on array every \/$package with $
+						$line =~ s/\/$package/\/$package2\/$package/;
+					}
+				}
 			}
-		}
+			}
+	}
 	}
 	@lines = sort @lines;
 	#delete last slash again
 	for(@lines){
 		s/\/$//;
+		#s/^(.*\/)/" " x (length($1)-2)/e;
 	}
 
-	for my $package (@has_deps){
-		my $length = length($package);
-		print $length;
-
-		my $space = "";
-		for(my $i = 0; $i < $length; $i = $i + 1){
-			$space = $space . " ";
-			print "space"
-		}
-		print "\n";
-
-		$lines[List::MoreUtils::firstidx { /\/$package\// } @lines] =~ s/^\s*\/$package\//$space/;
-	}
-
-	print "\n\n";
-	for(@has_deps){
-		print "$_\n";
-	}
-	
-	print "\n\n";
 	for(@lines){
 		print "$_\n";
 	}
