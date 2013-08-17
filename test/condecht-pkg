@@ -1,0 +1,15 @@
+[main]
+host = bebe-arch-lap
+dist = arch
+path = /home/bebe/src/condecht
+backup = true
+
+pkgINS = sudo pacman -S
+pkgREM = sudo pacman -R
+
+user = bebe
+group = bebe
+home = /home/bebe
+defperm = 755
+perm_f = 644
+perm_d = 755

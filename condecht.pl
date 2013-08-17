@@ -101,8 +101,8 @@ sub fcp {
 
 	#copy file $ffile, $fdest
 	if(!$fail){
-		if($mode{link}){
-			link($ffile, $fdest) or $fail = 2; 
+		if($main{link}){
+			symlink($ffile, $fdest) or $fail = 2; 
 		}
 		else {
 			copy($ffile, $fdest) or $fail = 2;
@@ -121,11 +121,11 @@ sub fcp {
 	
 	warn "PATH: failed creating path " . dirname($fdest) . ": $!\n"
 		if($fail == 1);
-	warn "COPY: failed at $fdest: $!"
+	warn "COPYING/LINKING: failed at $fdest: $!\n"
 		if($fail == 2);
-	warn "CHMOD: failed at $fdest: $!"
+	warn "CHMOD: failed at $fdest: $!\n"
 		if($fail == 3);
-	warn "CHOWN: failed at $fdest: $!"
+	warn "CHOWN: failed at $fdest: $!\n"
 		if($fail == 4);
 
 	return $fail;
@@ -143,7 +143,7 @@ GetOptions(
 	"v|verbose"		=> \$main{verbose},
 	"debug"				=> \$main{debug},
 	"p|prefix=s"	=> \$main{prefix},
-	"l|link"			=> \%main{link},
+	"l|link"			=> \$main{link},
 	"opt=s%"			=> \%main,
 	"help"				=> sub { pod2usage(1) },
 	# install/remove configs/packages
@@ -193,6 +193,9 @@ if(!$mode){
 }
 if($main{debug}){
 	warn "The option debug is not in use yet!\n";
+}
+if($main{link} and $mode eq "ba"){
+	warn "YOU ARE SYMLINKING YOUR BACKUP, BE CAREFUL. THERE WON'T BE ANY COPY!\n";
 }
 if(!$main{verbose}){
 	$main{verbose} = 0;
