@@ -173,6 +173,12 @@ GetOptions(
 														$mode = "lp";
 													} else { exit(1); }
 												},
+	# list packages as tree
+	"pkgtree"			=> sub	{
+													if(!$mode or ($mode eq "pkgtree")){
+														$mode = "pkgtree";
+													} else { exit(1); }
+												},
 	# backup
 	"b|backup"		=> sub	{
 													if(!$mode or ($mode eq "ba")){
@@ -315,45 +321,37 @@ my $pkg = Config::IniFiles->new(-file => $main{config_pkg}, -nocase => 1)
 ##DO OTHER THINGS THAN DEPLOYING/REMOVING PACKAGES ##
 # list packages
 if($mode eq "lp"){
+	for my $package ($pkg->Groups){
+		print "$package\n";
+	}
+}
+# list packages as tree
+if($mode eq "pkgtree"){
 
 	my @lines;
-	my @has_deps;
 
 	for my $package ($pkg->Groups){
 		push @lines, "/$package/";
-	}
-
-	#debug
-	#for my $package ($pkg->Groups){
-	#	print "$package\n";
-	#}
-	#die "not implemented further things.";
-
-	for my $package ($pkg->Groups){
 		for my $package2 ($pkg->Groups){
 			for my $ldep ($pkg->val("$package2 all", "deps"),
 										$pkg->val("$package2 $main{host}", "deps")){
-			for my $dep (split(" ", $ldep)){
-		#		print "1:$package, 2:$package2, dep: $ldep\n";
-				if($dep eq $package){
-		#			print "hit:$package $package2\n";
-					for my $line (@lines){
-						
-						#replace on array every \/$package with $
-						$line =~ s/\/$package/\/$package2\/$package/;
+				for my $dep (split(" ", $ldep)){
+					if($dep eq $package){
+						for my $line (@lines){
+							#replace on array every \/$package with $
+							$line =~ s/^\/$package/\/$package2\/$package/;
+						}
 					}
 				}
 			}
-			}
-	}
-	}
-	@lines = sort @lines;
-	#delete last slash again
-	for(@lines){
-		s/\/$//;
-		#s/^(.*\/)/" " x (length($1)-2)/e;
+		}
 	}
 
+	@lines = sort @lines;
+	for(@lines){
+		s/\/$//; #delete last slash
+		s/^\/(.+\/)/"|" . "-" x (length($1)-4) . ">"/e;
+	}
 	for(@lines){
 		print "$_\n";
 	}
@@ -768,7 +766,7 @@ Condecht - a little config deploying and system-package install tool
 
 condecht [OPTIONs] <ACTION> @packages
 
-=head2 ACTIONS
+=head2 ACTIONs
 
 =over 2
 
@@ -799,6 +797,10 @@ check your packages.conf file for errors
 =item B<--lp>
 
 list all available condecht-packages
+
+=item B<--pkgtree>
+
+display a basic dependency-tree of all condecht-packages
 
 =back
 
